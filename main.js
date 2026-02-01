@@ -1,5 +1,6 @@
 import sh from "./src/sh.js";
-import "./src/scene.js";
+
+import "./src/new.js";
 
 console.log("init");
 
@@ -13,3 +14,4 @@ document.addEventListener("DOMContentLoaded", () => {
   console.log("- sh.debug.printState()");
   console.log("- WASD to pan, left-drag to orbit, wheel to zoom");
 });
+

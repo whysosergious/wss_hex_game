@@ -1,51 +1,22 @@
+/**
+ * @fileoverview
+ * This file contains functions for initializing and creating hexagonal tiles in the Three.js scene.
+ */
+
 import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import sh from "./sh.js";
-import "./api.js";
+// The 'sh' object is implicitly available via 'this' context when these functions are called as methods of 'sh'.
+// No direct import needed if 'sh' is always the 'this' context.
 
 /**
- * initialize scene
- **/
-sh._initScene = function () {
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x222222);
-
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.shadowMap.enabled = true;
-  document.body.appendChild(renderer.domElement);
-
-  const ambient = new THREE.AmbientLight(0x404040, 0.6);
-  scene.add(ambient);
-  const directional = new THREE.DirectionalLight(0xffffff, 0.8);
-  directional.position.set(5, 10, 5);
-  directional.castShadow = true;
-  scene.add(directional);
-
-  const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(30, 30),
-    new THREE.MeshLambertMaterial({ color: 0x333333 }),
-  );
-  floor.rotation.x = -Math.PI / 2;
-  floor.receiveShadow = true;
-  scene.add(floor);
-
-  this.state.scene = scene;
-  this.state.renderer = renderer;
-
-  window.addEventListener("resize", () => {
-    const { innerWidth, innerHeight } = window;
-    this.state.camera.aspect = innerWidth / innerHeight;
-    this.state.camera.updateProjectionMatrix();
-    this.state.renderer.setSize(innerWidth, innerHeight);
-  });
-};
-
-/**
- * @param qRadius {number} hex number of col
- * @param rRadius {number} hex number of rows
- * */
-sh._initTiles = function (qRadius = 1, rRadius = 1) {
+ * Initializes a hexagonal grid of tiles.
+ * Generates tile positions based on the given radii and calls `_createHexTile` for each position.
+ *
+ * @this {import("../../sh.js").sh}
+ * @param {number} [qRadius=1] - The radius for the 'q' axial coordinate.
+ * @param {number} [rRadius=1] - The radius for the 'r' axial coordinate.
+ * @returns {void}
+ */
+export function _initTiles(qRadius = 1, rRadius = 1) {
   const size = this.config.tile.radius;
   const spacing = this.config.tile.spacing;
 
@@ -75,9 +46,21 @@ sh._initTiles = function (qRadius = 1, rRadius = 1) {
   console.log(
     `[sh] Generated ${positions.length} tiles (q:${qRadius}, r:${rRadius})`,
   );
-};
+}
 
-sh._createHexTile = function (x, z, q, r, index) {
+/**
+ * Creates a single hexagonal tile, including its 3D mesh, material, and a canvas-based sprite for displaying text.
+ * Stores tile data in `sh.state.tiles` and maps its coordinates to its index in `sh.state.tileMap`.
+ *
+ * @this {import("../../sh.js").sh}
+ * @param {number} x - The x-coordinate for the tile's position.
+ * @param {number} z - The z-coordinate for the tile's position.
+ * @param {number} q - The 'q' axial coordinate of the tile.
+ * @param {number} r - The 'r' axial coordinate of the tile.
+ * @param {number} index - The unique index of the tile.
+ * @returns {void}
+ */
+export function _createHexTile(x, z, q, r, index) {
   // CREATE GROUP FIRST
   const group = new THREE.Group();
   group.position.set(x, 0, z);
@@ -170,7 +153,5 @@ sh._createHexTile = function (x, z, q, r, index) {
   const key = `${q}_${r}`;
   this.state.tileMap.set(key, index);
   console.log(`[sh] Registered tile [${q},${r}] → ${index}`);
-};
+}
 
-sh.resetScene(3, 3);
-sh.setArmyStrength(sh.getTileIndex(0, 0), 5);
