@@ -43,6 +43,8 @@ export const state = {
   selectedTile: null,
   tileMap: new Map(),
   // UNTYPED
+  isOrbiting: false,
+  orbitDragThreshold: 5,
   currentPlayer: 1, // Active player (1-6)
   movementMode: false,
   movementPreview: [],
@@ -53,6 +55,7 @@ export const state = {
     turnNumber: 1,
   },
   players: {
+    0: { color: 0x333333, name: "__BLOCKED__", tiles: new Set() }, // Blue
     1: { color: 0x1f77b4, name: "Player 1", tiles: new Set() }, // Blue
     2: { color: 0xff7f0e, name: "Player 2", tiles: new Set() }, // Orange
     3: { color: 0x2ca02c, name: "Player 3", tiles: new Set() }, // Green

@@ -35,6 +35,7 @@ sh.hexNeighbors = function (q, r) {
 };
 
 sh.findHexPath = function (startQ, startR, targetQ, targetR, maxDist) {
+  const activePlayer = this.getActivePlayer();
   const startKey = `${startQ}_${startR}`;
   const targetKey = `${targetQ}_${targetR}`;
   const startIndex = this.state.tileMap.get(startKey);
@@ -56,7 +57,19 @@ sh.findHexPath = function (startQ, startR, targetQ, targetR, maxDist) {
     for (const n of neighbors) {
       const nKey = `${n.q}_${n.r}`;
       const nIndex = this.state.tileMap.get(nKey);
+
       if (nIndex && !visited.has(nIndex)) {
+        const neighborTile = this.state.tiles[nIndex];
+
+        // *** BLOCK enemies + blocked tiles ***
+        if (
+          neighborTile.playerId === 0 ||
+          (neighborTile.playerId !== undefined &&
+            neighborTile.playerId !== activePlayer)
+        ) {
+          continue;
+        }
+
         visited.add(nIndex);
         const newPath = [...path, nIndex];
         queue.push({ index: nIndex, path: newPath, dist: dist + 1 });
@@ -283,7 +296,6 @@ sh.updateReachableTiles = function () {
 
   this.clearReachableTiles();
 
-  // BFS to find ALL reachable tiles within range
   const queue = [{ index: this.state.selectedTile, dist: 0 }];
   const visited = new Set([this.state.selectedTile]);
   this.state.reachableTiles = [];
@@ -292,16 +304,13 @@ sh.updateReachableTiles = function () {
     const { index, dist } = queue.shift();
 
     if (dist > 0) {
-      // Don't highlight source
       this.state.reachableTiles.push(index);
       const tile = this.state.tiles[index];
-
-      // *** SUBTLE BLUE GLOW ***
       const reachColor = tile.mesh.userData.originalColor
         .clone()
         .multiplyScalar(1.15);
       tile.mesh.material.color.copy(reachColor);
-      tile.mesh.material.emissive.setHex(0x000044); // Deep blue glow
+      tile.mesh.material.emissive.setHex(0x000044);
     }
 
     if (dist >= maxDist) continue;
@@ -312,21 +321,24 @@ sh.updateReachableTiles = function () {
     for (const n of neighbors) {
       const nKey = `${n.q}_${n.r}`;
       const nIndex = this.state.tileMap.get(nKey);
-      if (
-        nIndex &&
-        !visited.has(nIndex) &&
-        this.state.tiles[nIndex].playerId !== activePlayer
-      ) {
-        // Only highlight enemy/neutral tiles
+
+      if (nIndex && !visited.has(nIndex)) {
+        const neighborTile = this.state.tiles[nIndex];
+
+        // *** BLOCK: enemy tiles (≠ activePlayer) + blocked tiles (playerId=0) ***
+        if (
+          neighborTile.playerId === 0 ||
+          (neighborTile.playerId !== undefined &&
+            neighborTile.playerId !== activePlayer)
+        ) {
+          continue; // Skip enemies + blocked
+        }
+
         visited.add(nIndex);
         queue.push({ index: nIndex, dist: dist + 1 });
       }
     }
   }
-
-  console.log(
-    `[sh] ${this.state.reachableTiles.length} reachable tiles highlighted`,
-  );
 };
 
 // Clear reachable tiles highlight
@@ -366,6 +378,7 @@ sh.nextTurn = function () {
 // Initialize players with preset colors
 sh.initPlayers = function () {
   this.state.players = {
+    1: { color: 0x222222, name: "__BLOCKED__", tiles: new Set() }, // Blue
     1: { color: 0x1f77b4, name: "Player 1", tiles: new Set() }, // Blue
     2: { color: 0xff7f0e, name: "Player 2", tiles: new Set() }, // Orange
     3: { color: 0x2ca02c, name: "Player 3", tiles: new Set() }, // Green
@@ -384,6 +397,9 @@ const test = () => {
 
   sh.assignTileToPlayer(15, 2);
   sh.setArmyStrength(15, 4);
+
+  sh.assignTileToPlayer(46, 0);
+  sh.assignTileToPlayer(47, 0);
 
   // sh.toggleMovementMode(); // ON
   // sh.selectTileByCoords(0, 0); // Selects center ✓

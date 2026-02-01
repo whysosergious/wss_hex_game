@@ -106,6 +106,7 @@ export function _createHexTile(x, z, q, r, index) {
   canvas.width = 128;
   canvas.height = 64;
   const ctx = canvas.getContext("2d");
+  const showLabel = 0 > 0 || this.config.tile.showEmptyLabel;
 
   ctx.fillStyle = "rgba(0, 0, 0, 0)";
   ctx.fillRect(0, 0, 128, 64);
@@ -115,8 +116,13 @@ export function _createHexTile(x, z, q, r, index) {
   ctx.textBaseline = "middle";
   ctx.strokeStyle = "black";
   ctx.lineWidth = 2;
-  ctx.strokeText("0", 64, 32);
-  ctx.fillText("0", 64, 32);
+
+  if (showLabel) {
+    ctx.strokeText("0", 64, 32);
+    ctx.fillText("0", 64, 32);
+  } else {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.minFilter = THREE.LinearFilter;
@@ -154,4 +160,3 @@ export function _createHexTile(x, z, q, r, index) {
   this.state.tileMap.set(key, index);
   console.log(`[sh] Registered tile [${q},${r}] → ${index}`);
 }
-

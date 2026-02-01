@@ -32,7 +32,8 @@ export const config = {
     spacing: 0.04,
     radius: 1.0,
     depth: 0.2,
-    color: 0x888888,
+    color: 0x999999,
+    showEmptyLabel: false,
   },
   camera: {
     position: [0, 10, 10],
@@ -44,3 +45,4 @@ export const config = {
     strafeSpeed: 5.0,
   },
 };
+

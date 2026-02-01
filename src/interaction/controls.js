@@ -54,22 +54,58 @@ export function _initControls() {
 
   const rendererDom = this.state.renderer.domElement;
 
-  const onMouseMove = (/** @type {MouseEvent} */ event) => {
-    const rect = rendererDom.getBoundingClientRect();
-    // Calculate mouse position in normalized device coordinates (-1 to +1)
-    this.state.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    this.state.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    this._updateHover(); // Call internal function to handle hover logic
+  let pointerDownPos = null;
+
+  // *** ORBIT DRAG DETECTION ***
+  const onPointerDown = (event) => {
+    pointerDownPos = { x: event.clientX, y: event.clientY };
+    this.state.isOrbiting = false;
   };
 
-  const onMouseClick = (/** @type {MouseEvent} */ event) => {
+  const onPointerMove = (/** @type {MouseEvent} */ event) => {
+    if (!this.state.isOrbiting) {
+      if (pointerDownPos) {
+        const deltaX = Math.abs(event.clientX - pointerDownPos.x);
+        const deltaY = Math.abs(event.clientY - pointerDownPos.y);
+
+        if (
+          deltaX > this.state.orbitDragThreshold ||
+          deltaY > this.state.orbitDragThreshold
+        ) {
+          this.state.hoveredTile = null;
+          this.state.seletedTile = null;
+          this.state.isOrbiting = true;
+          console.log("[sh] Orbit drag detected - interactions blocked");
+        }
+      }
+
+      const rect = rendererDom.getBoundingClientRect();
+      // Calculate mouse position in normalized device coordinates (-1 to +1)
+      this.state.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      this.state.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      this._updateHover(); // Call internal function to handle hover logic
+    }
+  };
+
+  const onPointerUp = () => {
+    setTimeout(() => {
+      this.state.isOrbiting = false;
+      pointerDownPos = null;
+    }, 50); // Small delay for smooth release
+  };
+
+  rendererDom.addEventListener("pointerdown", onPointerDown);
+  rendererDom.addEventListener("pointerup", onPointerUp);
+
+  const onPointerClick = (/** @type {MouseEvent} */ event) => {
     // Only process left clicks
     if (event.button === 0) {
       this._selectTile(); // Call internal function to handle selection logic
     }
   };
 
-  rendererDom.addEventListener("pointermove", onMouseMove);
-  rendererDom.addEventListener("click", onMouseClick);
+  rendererDom.addEventListener("pointermove", onPointerMove);
+  rendererDom.addEventListener("click", onPointerClick);
   rendererDom.style.cursor = "default"; // Set default cursor style
 }
+

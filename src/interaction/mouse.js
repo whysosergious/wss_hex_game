@@ -172,51 +172,59 @@ export function _resetTileHighlight(tile) {
  * @this {import("../../sh.js").sh}
  * @returns {void}
  */
-
 export function _selectTile() {
   if (this.state.hoveredTile === null) return;
 
   const tileIndex = this.state.hoveredTile;
   const tile = this.state.tiles[tileIndex];
+  console.log(tile.playerId);
 
-  // *** ACTIVE PLAYER OWNERSHIP CHECK ***
-  if (!this.state.movementMode && tile.playerId !== this.getActivePlayer()) {
+  // in movement mode, for now, only allow neutral or your own selection
+  if (
+    this.state.movementMode &&
+    tile.playerId !== this.getActivePlayer() &&
+    tile.playerId !== undefined
+  ) {
     console.log(`[sh] Cannot select enemy tile ${tileIndex}`);
+    return;
+  }
+
+  // *** ONLY ALLOW ACTIVE PLAYER'S OWN TILES ***
+  if (!this.state.movementMode && tile.playerId !== this.getActivePlayer()) {
+    console.log(`[sh] Cannot select enemy/neutral tile ${tileIndex}`);
     return;
   }
 
   // *** MOVEMENT MODE ***
   if (this.state.movementMode) {
-    if (this.state.selectedTile === null) {
-      // First click: SOURCE (green + reachable)
-      const sourceColor = tile.mesh.userData.originalColor
-        .clone()
-        .multiplyScalar(2.0);
-      tile.mesh.material.color.copy(sourceColor);
-      tile.mesh.material.emissive.setHex(0x00ff00);
-      tile.group.position.y += 0.1;
-      this.state.selectedTile = tileIndex;
-      this.updateReachableTiles();
-      console.log(`[sh] Movement source: ${tileIndex} (army:${tile.army})`);
-    } else {
-      // Second click: EXECUTE
+    // Already in movement - EXECUTE to hovered tile
+    if (this.state.selectedTile !== null) {
       this.executeMovement(this.state.selectedTile, tileIndex);
+      return;
     }
+    // No source selected? Shouldn't happen
     return;
   }
 
-  // *** MOVEMENT MODE OFF - Enter movement mode directly ***
+  // *** NORMAL CLICK ON OWN TILE → ENTER MOVEMENT MODE ***
   if (tile.army > 0) {
-    this.toggleMovementMode(); // Enter movement mode
-    // Immediately select as source
+    // Enter movement mode + select source instantly
+    this.toggleMovementMode();
+
+    // Source styling
     const sourceColor = tile.mesh.userData.originalColor
       .clone()
       .multiplyScalar(2.0);
     tile.mesh.material.color.copy(sourceColor);
-    tile.mesh.material.emissive.setHex(0x00ff00);
+    tile.mesh.material.emissive.setHex(0x00ff00); // Green
     tile.group.position.y += 0.1;
     this.state.selectedTile = tileIndex;
+
+    // Show reachable immediately
     this.updateReachableTiles();
-    console.log(`[sh] Movement mode + source selected: ${tileIndex}`);
+
+    console.log(`[sh] Movement activated: ${tileIndex} (army:${tile.army})`);
+  } else {
+    console.log(`[sh] No army to move: ${tileIndex}`);
   }
 }

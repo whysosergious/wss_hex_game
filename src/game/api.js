@@ -30,12 +30,15 @@ export function setArmyStrength(tileIndex, value, isPreview = false) {
 
   const ctx = tile.ctx;
   const canvas = tile.canvas;
+  const showLabel = value > 0 || this.config.tile.showEmptyLabel;
 
   // clear the canvas
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  ctx.strokeText(value.toString(), 64, 32);
-  ctx.fillText(value.toString(), 64, 32);
+  if (showLabel) {
+    ctx.strokeText(value.toString(), 64, 32);
+    ctx.fillText(value.toString(), 64, 32);
+  }
 
   tile.label.material.map.needsUpdate = true;
   console.log(`[sh] Tile ${tileIndex} army: ${value}`);
