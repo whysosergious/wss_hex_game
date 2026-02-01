@@ -1,7 +1,7 @@
 export const sh = {
   config: {
     tile: {
-      spacing: 0.02,
+      spacing: 0.04,
       radius: 1.0,
       depth: 0.2,
       color: 0x888888,
@@ -24,7 +24,11 @@ export const sh = {
     renderer: null,
     tiles: [],
     controls: null,
-    keys: { w: false, a: false, s: false, d: false },
+    keys: {},
+    raycaster: null,
+    mouse: null,
+    hoveredTile: null,
+    selectedTile: null,
   },
 };
 
