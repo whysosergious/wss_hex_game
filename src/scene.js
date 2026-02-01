@@ -33,11 +33,22 @@ sh.setArmyStrength = function (tileIndex, value) {
   const box = tile.label.geometry.boundingBox;
   tile.label.position.x = tile.mesh.position.x - (box.max.x - box.min.x) / 2;
 
-  const intensity = Math.min(1, value / 10);
-  const color = new THREE.Color().setHSL(0.25 - intensity * 0.15, 0.7, 0.5);
-  tile.mesh.material.color.copy(color);
+  // const intensity = Math.min(1, value / 10);
+  // const color = new THREE.Color().setHSL(0.25 - intensity * 0.15, 0.7, 0.5);
+  // tile.mesh.material.color.setHex(0x333333);
 
   console.log(`[sh] Tile ${tileIndex} army: ${value}`);
+};
+
+sh.setTileColor = function (tileIndex, hexColor) {
+  const tile = this.state.tiles[tileIndex];
+  if (!tile) {
+    console.warn("[sh] Invalid tile index:", tileIndex);
+    return;
+  }
+
+  tile.mesh.material.color.setHex(hexColor);
+  console.log(`[sh] Tile ${tileIndex} color: 0x${hexColor.toString(16)}`);
 };
 
 sh.debug = {
@@ -88,30 +99,44 @@ sh._initScene = function () {
   });
 };
 
-sh._initTiles = function () {
-  const loader = new FontLoader();
-  const fontUrl =
-    "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/fonts/helvetiker_bold.typeface.json";
+const loader = new FontLoader();
+const fontUrl =
+  "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/fonts/helvetiker_bold.typeface.json";
 
-  // CORRECT flat-top hex spacing - sides touch with small gap
+sh._initTiles = function (qRadius = 1, rRadius = 1) {
   const size = this.config.tile.radius;
-  const spacing = size * 0.9; // 2% gap between sides
+  const spacing = this.config.tile.spacing;
 
-  const positions = [
-    // Center
-    { pos: [0, 0], q: 0, r: 0 },
-    // Ring 1 - CORRECT side-to-side alignment
-    { pos: [spacing * 1.732, spacing], q: 1, r: 0 },
-    { pos: [spacing * 1.732, -spacing], q: 0, r: 1 },
-    { pos: [0, spacing * 2], q: 0, r: 0 },
-    { pos: [-spacing * 1.732, spacing], q: -1, r: 1 },
-    { pos: [-spacing * 1.732, -spacing], q: -1, r: -1 },
-    { pos: [0, -spacing * 2], q: 0, r: -1 },
-  ];
+  // EXACT spacing (no magic numbers)
+  const hexWidth = size * 2.0; // 2.0
+  const hexHeight = size * 1.732; // √3
+  const spacingX = hexWidth * 0.75 + spacing; // 1.5  - horizontal center-to-center
+  const spacingZ = hexHeight * 0.5 + spacing; // 0.866 - vertical center-to-center
+
+  const positions = [];
+
+  // Generate all tiles in q,r radius
+  for (let q = -qRadius; q <= qRadius; q++) {
+    for (
+      let r = Math.max(-rRadius, -q - rRadius);
+      r <= Math.min(rRadius, -q + rRadius);
+      r++
+    ) {
+      // EXACT axial-to-world conversion
+      const x = spacingX * q;
+      const z = spacingZ * (r * 2 + q);
+
+      positions.push({ pos: [x, z], q, r });
+    }
+  }
 
   positions.forEach(({ pos: [x, z], q, r }, index) => {
     this._createHexTile(x, z, q, r, index, loader, fontUrl);
   });
+
+  console.log(
+    `[sh] Generated ${positions.length} tiles (q:${qRadius}, r:${rRadius})`,
+  );
 };
 
 sh._createHexTile = function (x, z, q, r, index, loader, fontUrl) {
@@ -271,7 +296,7 @@ sh.resetScene = function () {
     tile.mesh.geometry.dispose();
     tile.label.geometry.dispose();
   });
-  this.state.tiles = [];
+  this.state.tiles.length = 0;
 
   // Recreate tiles (same positions as init)
   this._initTiles();

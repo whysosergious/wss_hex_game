@@ -5,7 +5,7 @@ console.log("init");
 
 document.addEventListener("DOMContentLoaded", () => {
   sh.init();
-  sh.setArmyStrength(0, 0); // Test API
+  // sh.setArmyStrength(0, 0); // Test API
 
   // Test console commands
   console.log("Test commands:");
