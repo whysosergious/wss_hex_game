@@ -23,15 +23,10 @@ sh.setArmyStrength = function (tileIndex, value) {
   }
   tile.army = value;
 
-  tile.label.geometry.dispose();
-  tile.label.geometry = new TextGeometry(value.toString(), {
-    font: tile.label.userData.font,
-    size: 0.5,
-    depth: 0.05,
-  });
-  tile.label.geometry.computeBoundingBox();
-  const box = tile.label.geometry.boundingBox;
-  tile.label.position.x = tile.mesh.position.x - (box.max.x - box.min.x) / 2;
+  const ctx = tile.ctx; // Already created!
+  ctx.clearRect(0, 0, 128, 64);
+  ctx.fillText(value.toString(), 64, 32);
+  tile.label.material.map.needsUpdate = true; // ~1ms GPU upload
 
   // const intensity = Math.min(1, value / 10);
   // const color = new THREE.Color().setHSL(0.25 - intensity * 0.15, 0.7, 0.5);
@@ -139,11 +134,11 @@ sh._initTiles = function (qRadius = 1, rRadius = 1) {
   );
 };
 
-sh._createHexTile = function (x, z, q, r, index, loader, fontUrl) {
+sh._createHexTile = async function (x, z, q, r, index, loader, fontUrl) {
   const shape = new THREE.Shape();
   const radius = this.config.tile.radius;
 
-  // Flat-top hex
+  // Flat-top hex geometry (unchanged)
   shape.moveTo(radius, 0);
   shape.lineTo(radius * 0.5, radius * 0.866);
   shape.lineTo(-radius * 0.5, radius * 0.866);
@@ -170,34 +165,58 @@ sh._createHexTile = function (x, z, q, r, index, loader, fontUrl) {
 
   this.state.scene.add(mesh);
 
-  const labelMesh = new THREE.Mesh(
-    new THREE.BoxGeometry(0.1, 0.1, 0.1),
-    new THREE.MeshBasicMaterial({ color: 0x00ff00 }),
-  );
-  labelMesh.position.set(x, this.config.tile.depth + 0.4, z);
-  labelMesh.visible = false;
-  this.state.scene.add(labelMesh);
+  // Canvas for dynamic text texture
+  const canvas = document.createElement("canvas");
+  canvas.width = 128;
+  canvas.height = 64;
+  const ctx = canvas.getContext("2d");
 
-  this.state.tiles.push({ mesh, label: labelMesh, army: 0, q, r });
+  // Canvas setup for crisp text
+  ctx.fillStyle = "rgba(0, 0, 0, 0.8)"; // Semi-transparent black background
+  ctx.fillRect(0, 0, 128, 0);
+  ctx.fillStyle = "white";
+  ctx.font = "bold 28px Arial";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.strokeStyle = "black";
+  ctx.lineWidth = 2;
 
-  loader.load(fontUrl, (font) => {
-    labelMesh.geometry.dispose();
-    const textGeom = new TextGeometry("0", { font, size: 0.5, depth: 0.05 });
-    textGeom.computeBoundingBox();
-    const box = textGeom.boundingBox;
+  // Initial text with stroke for readability
+  ctx.strokeText("0", 64, 32);
+  ctx.fillText("0", 64, 32);
 
-    labelMesh.geometry = textGeom;
-    labelMesh.material = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    labelMesh.position.set(
-      x - (box.max.x - box.min.x) / 2,
-      this.config.tile.depth + 0.4,
-      z,
-    );
-    labelMesh.userData.font = font;
-    labelMesh.visible = true;
+  const tile = {
+    mesh,
+    canvas,
+    ctx,
+    army: 0,
+    q,
+    r,
+  };
 
-    this.setArmyStrength(index, 0);
+  // *** SPRITE MATERIAL VERSION ***
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.needsUpdate = true;
+
+  const spriteMaterial = new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true,
+    opacity: 0.95,
   });
+
+  const label = new THREE.Sprite(spriteMaterial);
+
+  // Scale to readable size (width x height)
+  label.scale.set(1.4, 0.7, 1);
+  label.position.set(x, this.config.tile.depth + 1, z);
+  label.userData.font = true; // For setArmyStrength check
+
+  this.state.scene.add(label);
+  tile.label = label;
+
+  this.state.tiles.push(tile);
 };
 
 sh._initCamera = function () {
