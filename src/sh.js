@@ -29,6 +29,7 @@ export const sh = {
     mouse: null,
     hoveredTile: null,
     selectedTile: null,
+    tileMap: new Map(),
   },
 };
 
