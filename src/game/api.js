@@ -246,4 +246,15 @@ export const debug = {
       }),
     );
   },
+  async testDice() {
+    // Just test dice - NO resetScene needed!
+    if (!sh.diceRoller) {
+      console.error(
+        "[debug] DiceRoller not initialized. Call sh.init() first.",
+      );
+      return;
+    }
+    const result = await sh.diceRoller.rollDice(1);
+    console.log("Dice result:", result);
+  },
 };

@@ -18,6 +18,8 @@ export function init() {
   this._initCamera();
   this._initControls();
   this._startRenderLoop();
+  this._initDiceRoller(this);
+
   this.state.initialized = true;
-  console.log("[sh] Initialized 7-tile hex demo");
 }
+

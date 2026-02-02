@@ -30,6 +30,7 @@ import {
   clearSelection,
   debug,
 } from "./game/api.js";
+import { _initDiceRoller } from "./dice.js";
 
 /**
  * The global application object.
@@ -61,9 +62,9 @@ import {
  * @property {function(): void} debug.printTileMap - Prints the tile map to the console.
  */
 export const sh = {
-  config: config,
-  state: state,
-  init: init,
+  config,
+  state,
+  init,
   _initScene,
   _initCamera,
   _initTiles,
@@ -83,9 +84,9 @@ export const sh = {
   resetScene,
   getSelectedTile,
   clearSelection,
+  _initDiceRoller,
   debug: debug,
 };
 
 globalThis.sh = sh;
 export default sh;
-
