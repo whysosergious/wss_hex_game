@@ -179,24 +179,48 @@ sh.updateMovementPreview = function (hoverIndex) {
     selectedTile.r,
     targetTile.q,
     targetTile.r,
-    pathLength,
   );
 
+  if (path.length <= 1 || hoverIndex === this.state.selectedTile) return;
+
   this.state.movementPreview = path;
+
+  // *** PRESERVE ORIGINALS + SIMULATE STACKING ***
+  const originalArmies = path.map((idx) => this.state.tiles[idx].army);
+  let movingArmy = originalArmies[0];
 
   path.forEach((index, i) => {
     const tile = this.state.tiles[index];
 
-    // *** PATH OVERLAY (brightest - on top of reachable blue) ***
+    delete tile.armyPreview;
+
+    let previewValue;
+    if (i === 0) {
+      // *** SOURCE ALWAYS SHOWS 1 ***
+      previewValue = 1;
+      movingArmy -= 1;
+    } else if (i === path.length - 1) {
+      // Destination
+      previewValue = originalArmies[i] + movingArmy;
+    } else {
+      // Path tile
+      previewValue = originalArmies[i] + 1;
+      movingArmy -= 1;
+    }
+
+    this._setArmyPreview(tile, previewValue);
+
+    // Path highlight
     const pathColor = tile.mesh.userData.originalColor
       .clone()
       .multiplyScalar(2.0);
     tile.mesh.material.color.copy(pathColor);
-    tile.mesh.material.emissive.setHex(0x444400); // Bright yellow
-
-    let previewValue = i === path.length - 1 ? remainder : 1;
-    this._setArmyPreview(tile, previewValue);
+    tile.mesh.material.emissive.setHex(0x444400);
   });
+
+  console.log(
+    `[sh] Preview: [${originalArmies.join(",")}→${path.map((_, i) => (i === path.length - 1 ? originalArmies[i] + movingArmy : originalArmies[i] + 1)).join(",")}]`,
+  );
 };
 
 sh._setArmyPreview = function (tile, previewValue) {
@@ -233,20 +257,15 @@ sh.executeMovement = function (fromIndex, toIndex) {
     toTile.q,
     toTile.r,
   );
-  const totalCost = pathLength;
-  const remainder = fromTile.army - totalCost;
+  const remainder = fromTile.army - pathLength;
 
-  if (remainder < 0) {
+  if (remainder <= 0) {
     console.log(
-      `[sh] Not enough army! Need ${totalCost}, have ${fromTile.army}`,
+      `[sh] Not enough army! Need ${pathLength}, have ${fromTile.army}`,
     );
     return;
   }
 
-  // *** EXECUTE: source=1, path=1 each, dest=remainder ***
-  this.setArmyStrength(fromIndex, 1); // Real army update
-
-  // Convert entire path to player 1 (permanent)
   const path = this.findHexPath(
     fromTile.q,
     fromTile.r,
@@ -254,22 +273,38 @@ sh.executeMovement = function (fromIndex, toIndex) {
     toTile.r,
     pathLength,
   );
-  path.slice(1).forEach((index) => {
-    // Skip source
-    this.assignTileToPlayer(index, 1, 0xff4444); // Dark red permanent
-    this.setArmyStrength(index, 1); // Real army=1
-  });
 
-  // Destination gets remainder
-  this.assignTileToPlayer(toIndex, 1, 0xff4444);
-  this.setArmyStrength(toIndex, remainder);
+  // *** SAME LOGIC AS PREVIEW: PRESERVE ORIGINALS + APPLY STACKING ***
+  const originalArmies = path.map((idx) => this.state.tiles[idx].army);
+  let movingArmy = originalArmies[0];
+
+  path.forEach((index, i) => {
+    const tile = this.state.tiles[index];
+
+    if (i === 0) {
+      // *** SOURCE: SET TO 1 ***
+      this.setArmyStrength(index, 1);
+      movingArmy -= 1;
+    } else if (i === path.length - 1) {
+      // *** DESTINATION: ORIGINAL + REMAINDER ***
+      this.assignTileToPlayer(index, 1, 0xff4444);
+      this.setArmyStrength(index, originalArmies[i] + movingArmy);
+    } else {
+      // *** PATH TILE: ORIGINAL + 1 ***
+      this.assignTileToPlayer(index, 1, 0xff4444);
+      this.setArmyStrength(index, originalArmies[i] + 1);
+      movingArmy -= 1;
+    }
+  });
 
   this.clearMovementPreview();
   this.clearReachableTiles();
   this.clearSelection();
   this.toggleMovementMode();
 
-  console.log(`[sh] MOVED ${remainder} army! Path: ${path.join("→")}`);
+  console.log(
+    `[sh] EXECUTED: [${originalArmies.join(",")}→${path.map((idx, i) => (i === 0 ? 1 : i === path.length - 1 ? originalArmies[i] + movingArmy : originalArmies[i] + 1)).join(",")}]`,
+  );
 };
 
 sh.assignAllTilesToPlayer = function (playerId = 0, colorHex = 0x888888) {
@@ -381,7 +416,7 @@ sh.nextTurn = function () {
 // Initialize players with preset colors
 sh.initPlayers = function () {
   this.state.players = {
-    1: { color: 0x222222, name: "__BLOCKED__", tiles: new Set() }, // Blue
+    0: { color: 0x333333, name: "__BLOCKED__", tiles: new Set() }, // Blue
     1: { color: 0x1f77b4, name: "Player 1", tiles: new Set() }, // Blue
     2: { color: 0xff7f0e, name: "Player 2", tiles: new Set() }, // Orange
     3: { color: 0x2ca02c, name: "Player 3", tiles: new Set() }, // Green

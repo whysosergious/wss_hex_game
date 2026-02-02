@@ -63,4 +63,6 @@ export const state = {
     5: { color: 0x9467bd, name: "Player 5", tiles: new Set() }, // Purple
     6: { color: 0x8c564b, name: "Player 6", tiles: new Set() }, // Brown
   },
+  armyDeltas: new Map(),
+  previewDeltas: new Map(),
 };
