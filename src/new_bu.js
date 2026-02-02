@@ -41,7 +41,7 @@ sh.findHexPath = function (startQ, startR, targetQ, targetR, maxDist) {
   const startIndex = this.state.tileMap.get(startKey);
   const targetIndex = this.state.tileMap.get(targetKey);
 
-  if (startIndex === undefined || targetIndex === undefined) return [];
+  if (!startIndex || !targetIndex) return [];
 
   const queue = [{ index: startIndex, path: [startIndex], dist: 0 }];
   const visited = new Set([startIndex]);
@@ -58,7 +58,7 @@ sh.findHexPath = function (startQ, startR, targetQ, targetR, maxDist) {
       const nKey = `${n.q}_${n.r}`;
       const nIndex = this.state.tileMap.get(nKey);
 
-      if (nIndex !== undefined && !visited.has(nIndex)) {
+      if (nIndex && !visited.has(nIndex)) {
         const neighborTile = this.state.tiles[nIndex];
 
         // *** BLOCK enemies + blocked tiles ***
@@ -161,42 +161,57 @@ sh.updateMovementPreview = function (hoverIndex) {
 
   const selectedTile = this.state.tiles[this.state.selectedTile];
   const targetTile = this.state.tiles[hoverIndex];
-  const pathLength = this.hexDistance(
-    selectedTile.q,
-    selectedTile.r,
-    targetTile.q,
-    targetTile.r,
-  );
-  const remainder = Math.max(0, selectedTile.army - pathLength);
-
-  this.clearMovementPreview();
-
-  if (pathLength >= selectedTile.army || hoverIndex === this.state.selectedTile)
-    return;
 
   const path = this.findHexPath(
     selectedTile.q,
     selectedTile.r,
     targetTile.q,
     targetTile.r,
-    pathLength,
+    Infinity,
   );
 
+  this.clearMovementPreview();
+
+  if (path.length <= 1 || hoverIndex === this.state.selectedTile) return;
+
   this.state.movementPreview = path;
+
+  // *** PRESERVE ORIGINALS + SIMULATE STACKING ***
+  const originalArmies = path.map((idx) => this.state.tiles[idx].army);
+  let movingArmy = originalArmies[0];
 
   path.forEach((index, i) => {
     const tile = this.state.tiles[index];
 
-    // *** PATH OVERLAY (brightest - on top of reachable blue) ***
+    delete tile.armyPreview;
+
+    let previewValue;
+    if (i === 0) {
+      // *** SOURCE ALWAYS SHOWS 1 ***
+      previewValue = 1;
+      movingArmy -= 1;
+    } else if (i === path.length - 1) {
+      // Destination
+      previewValue = originalArmies[i] + movingArmy;
+    } else {
+      // Path tile
+      previewValue = originalArmies[i] + 1;
+      movingArmy -= 1;
+    }
+
+    this._setArmyPreview(tile, previewValue);
+
+    // Path highlight
     const pathColor = tile.mesh.userData.originalColor
       .clone()
       .multiplyScalar(2.0);
     tile.mesh.material.color.copy(pathColor);
-    tile.mesh.material.emissive.setHex(0x444400); // Bright yellow
-
-    let previewValue = i === path.length - 1 ? remainder : 1;
-    this._setArmyPreview(tile, previewValue);
+    tile.mesh.material.emissive.setHex(0x444400);
   });
+
+  console.log(
+    `[sh] Preview: [${originalArmies.join(",")}→${path.map((_, i) => (i === path.length - 1 ? originalArmies[i] + movingArmy : originalArmies[i] + 1)).join(",")}]`,
+  );
 };
 
 sh._setArmyPreview = function (tile, previewValue) {
@@ -225,51 +240,58 @@ sh._setArmyPreview = function (tile, previewValue) {
 };
 
 sh.executeMovement = function (fromIndex, toIndex) {
-  const fromTile = this.state.tiles[fromIndex];
-  const toTile = this.state.tiles[toIndex];
-  const pathLength = this.hexDistance(
-    fromTile.q,
-    fromTile.r,
-    toTile.q,
-    toTile.r,
+  const activePlayer = this.getActivePlayer();
+  const path = this.findHexPath(
+    this.state.tiles[fromIndex].q,
+    this.state.tiles[fromIndex].r,
+    this.state.tiles[toIndex].q,
+    this.state.tiles[toIndex].r,
+    Infinity, // Full path
   );
-  const totalCost = pathLength;
-  const remainder = fromTile.army - totalCost;
 
-  if (remainder < 0) {
-    console.log(
-      `[sh] Not enough army! Need ${totalCost}, have ${fromTile.army}`,
-    );
-    return;
+  if (path.length <= 1) return;
+
+  // *** PRESERVE ORIGINAL ARMIES FIRST ***
+  const originalArmies = path.map((idx) => this.state.tiles[idx].army);
+
+  let movingArmy = originalArmies[0]; // Start with source army
+
+  // *** SEQUENTIAL STACKING ***
+  for (let i = 0; i < path.length; i++) {
+    const index = path[i];
+    const tile = this.state.tiles[index];
+
+    if (i === 0) {
+      this.setArmyStrength(index, 1);
+      movingArmy -= 1;
+    } else if (i === path.length - 1) {
+      // DESTINATION: original + final remainder
+      const finalArmy = originalArmies[i] + movingArmy;
+      this.assignTileToPlayer(
+        index,
+        activePlayer,
+        this.getActivePlayerData().color,
+      );
+      this.setArmyStrength(index, finalArmy);
+    } else {
+      // PATH TILES: original + 1 garrison
+      const finalArmy = originalArmies[i] + 1;
+      this.setArmyStrength(index, finalArmy);
+
+      // Pass remainder to next
+      movingArmy -= 1;
+    }
   }
 
-  // *** EXECUTE: source=1, path=1 each, dest=remainder ***
-  this.setArmyStrength(fromIndex, 1); // Real army update
-
-  // Convert entire path to player 1 (permanent)
-  const path = this.findHexPath(
-    fromTile.q,
-    fromTile.r,
-    toTile.q,
-    toTile.r,
-    pathLength,
-  );
-  path.slice(1).forEach((index) => {
-    // Skip source
-    this.assignTileToPlayer(index, 1, 0xff4444); // Dark red permanent
-    this.setArmyStrength(index, 1); // Real army=1
-  });
-
-  // Destination gets remainder
-  this.assignTileToPlayer(toIndex, 1, 0xff4444);
-  this.setArmyStrength(toIndex, remainder);
-
+  // Cleanup
   this.clearMovementPreview();
   this.clearReachableTiles();
   this.clearSelection();
   this.toggleMovementMode();
 
-  console.log(`[sh] MOVED ${remainder} army! Path: ${path.join("→")}`);
+  console.log(
+    `[sh] Sequential stack: [${originalArmies.join(",")}→${path.map((i) => this.state.tiles[i].army).join(",")}]`,
+  );
 };
 
 sh.assignAllTilesToPlayer = function (playerId = 0, colorHex = 0x888888) {
@@ -325,7 +347,7 @@ sh.updateReachableTiles = function () {
       const nKey = `${n.q}_${n.r}`;
       const nIndex = this.state.tileMap.get(nKey);
 
-      if (nIndex !== undefined && !visited.has(nIndex)) {
+      if (nIndex && !visited.has(nIndex)) {
         const neighborTile = this.state.tiles[nIndex];
 
         // *** BLOCK: enemy tiles (≠ activePlayer) + blocked tiles (playerId=0) ***
@@ -401,8 +423,8 @@ const test = () => {
   sh.setArmyStrength(66, 1);
   sh.setArmyStrength(75, 2);
 
-  sh.assignTileToPlayer(63, 2);
-  sh.setArmyStrength(63, 4);
+  sh.assignTileToPlayer(15, 2);
+  sh.setArmyStrength(15, 4);
 
   sh.assignTileToPlayer(36, 0);
   sh.assignTileToPlayer(47, 0);
@@ -415,17 +437,6 @@ const test = () => {
     selectedTile: sh.state.selectedTile,
     army: sh.state.tiles[sh.state.selectedTile]?.army,
   });
-
-  console.log("=== TILE 0 DEBUG ===");
-  console.log("Tile 0:", sh.state.tiles[0]);
-  console.log("Tile 0 playerId:", sh.state.tiles[0]?.playerId);
-  console.log("Active player:", sh.getActivePlayer());
-  console.log("Tile 0 coords:", sh.state.tiles[0]?.q, sh.state.tiles[0]?.r);
-  console.log(
-    "Center coords:",
-    sh.state.tiles[sh.getTileIndex(0, 0)]?.q,
-    sh.state.tiles[sh.getTileIndex(0, 0)]?.r,
-  );
 };
 
 setTimeout(test, 1000);
