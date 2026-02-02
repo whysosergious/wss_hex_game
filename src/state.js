@@ -65,4 +65,19 @@ export const state = {
   },
   armyDeltas: new Map(),
   previewDeltas: new Map(),
+  turnState: {
+    activePlayer: 1,
+    turnNumber: 1,
+    roundNumber: 1,
+    actionsRemaining: 3, // Decrements per move/attack
+    turnsRemaining: 1, // Per round
+  },
+  attackPreview: {
+    active: false,
+    sourceIndex: null,
+    targetIndex: null,
+    lastReachableIndex: null,
+    canvas: null,
+    ctx: null,
+  },
 };

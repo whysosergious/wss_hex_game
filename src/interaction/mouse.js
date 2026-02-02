@@ -15,6 +15,7 @@ import * as THREE from "three";
  * @this {import("../../sh.js").sh}
  * @returns {void}
  */
+
 export function _updateHover() {
   const raycaster = this.state.raycaster;
   const mouse = this.state.mouse;
@@ -47,66 +48,36 @@ export function _updateHover() {
     this.state.hoveredTile = tileIndex;
     document.body.style.cursor = "pointer";
 
-    // Movement preview takes priority
     if (this.state.movementMode && this.state.selectedTile !== null) {
+      // *** MOVEMENT PATH FIRST ***
       this.updateMovementPreview(tileIndex);
+
+      // *** ATTACK CHECK using EXISTING movementPreview ***
+      const targetTile = tiles[tileIndex];
+      if (
+        targetTile.playerId !== undefined &&
+        targetTile.playerId !== this.getActivePlayer()
+      ) {
+        if (this.state.movementPreview.length > 1) {
+          // *** LAST TILE IN PATH = attack origin ***
+          const lastReachableIndex =
+            this.state.movementPreview[this.state.movementPreview.length - 1];
+          const lastTile = tiles[lastReachableIndex];
+          const finalAttackerArmy = lastTile.armyPreview || lastTile.army;
+
+          console.log(
+            `[sh] ATTACK POSSIBLE: Tile ${tileIndex} (${finalAttackerArmy} vs ${targetTile.army})`,
+          );
+          this.showAttackX(lastReachableIndex, tileIndex);
+        }
+      }
     } else if (tileIndex !== selectedTile) {
-      // Normal hover
+      // *** RESTORE NORMAL HOVER (your original logic) ***
       this._highlightTile(tile);
       console.log(`[sh] Hover tile ${tileIndex} (q:${tile.q}, r:${tile.r})`);
     }
-  } else {
-    this.state.hoveredTile = null;
-    document.body.style.cursor = "default";
   }
 }
-// export function _updateHover() {
-//   /** @type {THREE.Raycaster} */
-//   const raycaster = this.state.raycaster;
-//   /** @type {THREE.Vector2} */
-//   const mouse = this.state.mouse;
-//   /** @type {THREE.PerspectiveCamera} */
-//   const camera = this.state.camera;
-//   /** @type {import("../state.js").TileData[]} */
-//   const tiles = this.state.tiles;
-//   /** @type {number | null} */
-//   const selectedTile = this.state.selectedTile;
-//
-//   // If there was a previously hovered tile and it's not the currently selected one, reset its highlight
-//   if (
-//     this.state.hoveredTile !== null &&
-//     this.state.hoveredTile !== selectedTile
-//   ) {
-//     const prevTile = tiles[this.state.hoveredTile];
-//     this._resetTileHighlight(prevTile);
-//   }
-//
-//   this.state.hoveredTile = null; // Reset hovered tile
-//   document.body.style.cursor = "default"; // Reset cursor
-//
-//   raycaster.setFromCamera(mouse, camera);
-//   const tileMeshes = tiles.map((tile) => tile.mesh);
-//   const intersects = raycaster.intersectObjects(tileMeshes);
-//
-//   if (intersects.length > 0) {
-//     const intersect = intersects[0];
-//     const tileIndex = intersect.object.userData.index;
-//     this.state.hoveredTile = tileIndex;
-//
-//     // Highlight if not the selected tile
-//     if (tileIndex !== selectedTile) {
-//       const tile = tiles[tileIndex];
-//       this._highlightTile(tile);
-//       document.body.style.cursor = "pointer";
-//       console.log(`[sh] Hover tile ${tileIndex} (q:${tile.q}, r:${tile.r})`);
-//     }
-//   }
-//
-//   // *** NEW: Movement preview ***
-//   if (this.state.hoveredTile !== null) {
-//     this.updateMovementPreview(this.state.hoveredTile);
-//   }
-// }
 
 /**
  * Applies a visual highlight to a given tile.

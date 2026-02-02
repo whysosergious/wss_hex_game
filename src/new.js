@@ -1,3 +1,4 @@
+import * as THREE from "three";
 /*******
  *
  *
@@ -61,13 +62,13 @@ sh.findHexPath = function (startQ, startR, targetQ, targetR, maxDist) {
       if (nIndex !== undefined && !visited.has(nIndex)) {
         const neighborTile = this.state.tiles[nIndex];
 
-        // *** BLOCK enemies + blocked tiles ***
+        // *** FIXED: BLOCK enemies + blocked tiles ***
         if (
-          neighborTile.playerId === 0 ||
-          (neighborTile.playerId !== undefined &&
-            neighborTile.playerId !== activePlayer)
+          neighborTile.playerId === 0 || // Blocked
+          (neighborTile.playerId !== undefined && // Has owner
+            neighborTile.playerId !== activePlayer) // Enemy
         ) {
-          continue;
+          continue; // *** NEVER PATH THROUGH ***
         }
 
         visited.add(nIndex);
@@ -154,6 +155,7 @@ sh.clearMovementPreview = function () {
     }
   });
   this.state.movementPreview = [];
+  this.clearAttackPreview();
 };
 
 sh.updateMovementPreview = function (hoverIndex) {
@@ -167,13 +169,16 @@ sh.updateMovementPreview = function (hoverIndex) {
     targetTile.q,
     targetTile.r,
   );
-  const remainder = Math.max(0, selectedTile.army - pathLength);
 
-  this.clearMovementPreview();
+  // *** DON'T CLEAR if we're just checking enemy - preserve path ***
+  const isEnemy =
+    targetTile.playerId !== undefined &&
+    targetTile.playerId !== this.getActivePlayer();
+  if (!isEnemy) {
+    this.clearMovementPreview();
+  }
 
-  if (pathLength >= selectedTile.army || hoverIndex === this.state.selectedTile)
-    return;
-
+  // *** ALWAYS COMPUTE PATH (even to enemies) ***
   const path = this.findHexPath(
     selectedTile.q,
     selectedTile.r,
@@ -181,36 +186,74 @@ sh.updateMovementPreview = function (hoverIndex) {
     targetTile.r,
   );
 
-  if (path.length <= 1 || hoverIndex === this.state.selectedTile) return;
+  // *** FOR ENEMIES: SHOW PATH TO LAST REACHABLE + ATTACK INDICATOR ***
+  if (isEnemy && path.length > 1) {
+    console.log(`[sh] ATTACK POSSIBLE: Tile ${hoverIndex}`);
+
+    const reachablePath = path.slice(0, -1); // Exclude enemy
+    this.state.movementPreview = reachablePath;
+
+    const originalArmies = reachablePath.map(
+      (idx) => this.state.tiles[idx].army,
+    );
+    let movingArmy = originalArmies[0];
+
+    reachablePath.forEach((index, i) => {
+      const tile = this.state.tiles[index];
+      delete tile.armyPreview;
+
+      let previewValue;
+      if (i === 0) {
+        previewValue = 1;
+        movingArmy -= 1;
+      } else {
+        previewValue = originalArmies[i] + 1;
+        movingArmy -= 1;
+      }
+      this._setArmyPreview(tile, previewValue); // *** SHOWS FINAL ARMY ✓ ***
+
+      const pathColor = tile.mesh.userData.originalColor
+        .clone()
+        .multiplyScalar(2.0);
+      tile.mesh.material.color.copy(pathColor);
+      tile.mesh.material.emissive.setHex(0x444400);
+    });
+
+    // *** RED X ON LAST REACHABLE (FINAL ARMY STATE) ***
+    const lastReachableIndex = path[path.length - 2];
+    this.showAttackX(lastReachableIndex);
+    return;
+  }
+
+  // *** NORMAL MOVEMENT LOGIC (your original) ***
+  if (
+    pathLength >= selectedTile.army ||
+    hoverIndex === this.state.selectedTile ||
+    path.length <= 1
+  ) {
+    return;
+  }
 
   this.state.movementPreview = path;
-
-  // *** PRESERVE ORIGINALS + SIMULATE STACKING ***
   const originalArmies = path.map((idx) => this.state.tiles[idx].army);
   let movingArmy = originalArmies[0];
 
   path.forEach((index, i) => {
     const tile = this.state.tiles[index];
-
     delete tile.armyPreview;
 
     let previewValue;
     if (i === 0) {
-      // *** SOURCE ALWAYS SHOWS 1 ***
       previewValue = 1;
       movingArmy -= 1;
     } else if (i === path.length - 1) {
-      // Destination
       previewValue = originalArmies[i] + movingArmy;
     } else {
-      // Path tile
       previewValue = originalArmies[i] + 1;
       movingArmy -= 1;
     }
-
     this._setArmyPreview(tile, previewValue);
 
-    // Path highlight
     const pathColor = tile.mesh.userData.originalColor
       .clone()
       .multiplyScalar(2.0);
@@ -271,9 +314,8 @@ sh.executeMovement = function (fromIndex, toIndex) {
     fromTile.r,
     toTile.q,
     toTile.r,
-    pathLength,
+    pathLength + 1,
   );
-
   // *** SAME LOGIC AS PREVIEW: PRESERVE ORIGINALS + APPLY STACKING ***
   const originalArmies = path.map((idx) => this.state.tiles[idx].army);
   let movingArmy = originalArmies[0];
@@ -391,6 +433,7 @@ sh.clearReachableTiles = function () {
     const tile = this.state.tiles[idx];
     this._resetTileHighlight(tile);
   });
+  this.clearAttackPreview();
 };
 
 sh.getActivePlayer = function () {
@@ -427,6 +470,158 @@ sh.initPlayers = function () {
   console.log("[sh] Players initialized with colorblind-safe colors");
 };
 
+/**
+ *
+ *
+ *
+ *
+ *
+ *
+ * attack logic
+ *
+ *
+ *
+ *
+ * **/
+
+sh.updateAttackPreview = function (hoverIndex) {
+  if (!this.state.movementMode || this.state.selectedTile === null) return;
+
+  const sourceTile = this.state.tiles[this.state.selectedTile];
+  const targetTile = this.state.tiles[hoverIndex];
+
+  // *** ONLY ENEMIES ***
+  if (
+    targetTile.playerId !== this.getActivePlayer() &&
+    targetTile.playerId !== undefined
+  ) {
+    const path = this.findHexPath(
+      sourceTile.q,
+      sourceTile.r,
+      targetTile.q,
+      targetTile.r,
+    );
+
+    if (path.length > 1) {
+      // Can reach up to enemy
+      const lastReachableIndex = path[path.length - 2]; // Last OWN tile before enemy
+      const lastReachableTile = this.state.tiles[lastReachableIndex];
+
+      // *** SHOW RED 'X' BETWEEN lastReachable → enemy ***
+      this.showAttackX(lastReachableTile, targetTile);
+      this.state.attackPreview.active = true;
+      this.state.attackPreview.sourceIndex = this.state.selectedTile;
+      this.state.attackPreview.targetIndex = hoverIndex;
+      this.state.attackPreview.lastReachableIndex = lastReachableIndex;
+    }
+  } else {
+    this.clearAttackPreview();
+  }
+};
+
+sh.showAttackX = function (lastReachableIndex, targetIndex) {
+  const tile = this.state.tiles[lastReachableIndex];
+  const targetTile = this.state.tiles[targetIndex];
+  const ctx = tile.ctx;
+  const canvas = tile.canvas;
+
+  // *** FORCE REDRAW ARMY FIRST (with preview if active) ***
+  if (tile.armyPreview !== undefined) {
+    this._setArmyPreview(tile, tile.armyPreview);
+  } else {
+    this.setArmyStrength(lastReachableIndex, tile.army);
+  }
+
+  // *** THEN DRAW MASSIVE RED X ON TOP ***
+  ctx.save();
+  ctx.strokeStyle = "#ff0000"; // Bright red
+  ctx.lineWidth = 16; // THICK
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.globalCompositeOperation = "source-over";
+
+  // *** HUGE X covering entire canvas ***
+  ctx.beginPath();
+  ctx.moveTo(15, 15);
+  ctx.lineTo(canvas.width - 15, canvas.height - 15);
+  ctx.moveTo(canvas.width - 15, 15);
+  ctx.lineTo(15, canvas.height - 15);
+  ctx.stroke();
+
+  ctx.restore();
+  tile.label.material.map.needsUpdate = true;
+
+  console.log(`[sh] RED X DRAWN on tile ${lastReachableIndex}`);
+};
+
+sh.clearAttackPreview = function () {
+  if (
+    this.state.attackPreviewTile !== undefined &&
+    this.state.attackPreviewTile !== null
+  ) {
+    const tile = this.state.tiles[this.state.attackPreviewTile];
+    // Restore army display (handles both preview/real)
+    if (tile.armyPreview !== undefined) {
+      this._setArmyPreview(tile, tile.armyPreview);
+    } else {
+      this.setArmyStrength(this.state.attackPreviewTile, tile.army);
+    }
+    this.state.attackPreviewTile = null;
+  }
+};
+
+sh.executeAttack = function (fromIndex, toIndex) {
+  const fromTile = this.state.tiles[fromIndex];
+  const toTile = this.state.tiles[toIndex];
+
+  // *** SIMPLE ATTACK: attacker army vs defender army ***
+  if (fromTile.army <= toTile.army) {
+    // Defender wins - attacker loses all but 1
+    this.setArmyStrength(fromIndex, 1);
+  } else {
+    // Attacker wins - conquer tile
+    this.assignTileToPlayer(toIndex, this.getActivePlayer());
+    this.setArmyStrength(toIndex, fromTile.army - toTile.army);
+    this.setArmyStrength(fromIndex, 1);
+  }
+
+  this.consumeAction(); // Decrement actionsRemaining
+};
+
+sh.consumeAction = function () {
+  this.state.turnState.actionsRemaining--;
+  if (this.state.turnState.actionsRemaining <= 0) {
+    this.endTurn(); // → next player
+  }
+};
+
+sh.endTurn = function () {
+  this.state.turnState.turnsRemaining--;
+  if (this.state.turnState.turnsRemaining <= 0) {
+    this.endRound();
+  } else {
+    this.nextPlayer();
+  }
+};
+
+/*****
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ * test
+ *
+ *
+ *
+ * ****/
 const test = () => {
   sh.resetScene(5, 5);
   console.log("Center index:", sh.getTileIndex(0, 0)); // Should be 12 or similar

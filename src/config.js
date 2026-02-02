@@ -28,6 +28,9 @@
 
 /** @type {AppConfig} */
 export const config = {
+  actionsPerTurn: 3, // Moves/attacks per turn
+  turnsPerRound: 1, // Player turns per round (default single-turn)
+  roundsPerGame: 0, // 0 = unlimited
   tile: {
     spacing: 0.04,
     radius: 1.0,
@@ -45,4 +48,3 @@ export const config = {
     strafeSpeed: 5.0,
   },
 };
-
