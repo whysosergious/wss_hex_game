@@ -50,7 +50,7 @@ export class DiceRoller {
       flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(0, 1fr));
       grid-gap: 8px; place-items: center; padding: 20px; max-height: 320px;
       overflow: hidden; background: rgba(255,255,255,0.02);
-      border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 4px; border: 1px solid rgba(255,255,255,0.1);
     `;
 
     this[`${side}Sum`] = document.createElement("div");
@@ -58,7 +58,7 @@ export class DiceRoller {
     this[`${side}Sum`].style.cssText = `
       color: #ffffff; font-size: 44px; font-weight: 900; font-variant-numeric: tabular-nums;
       background: linear-gradient(145deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05));
-      backdrop-filter: blur(20px); border-radius: 20px; border: 1px solid rgba(255,255,255,0.3);
+      backdrop-filter: blur(20px); border-radius: 6px; border: 1px solid rgba(255,255,255,0.3);
       padding: 16px 32px; min-width: 100px; text-align: center;
       box-shadow: 0 12px 40px rgba(0,0,0,0.4);
     `;
