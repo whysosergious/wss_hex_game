@@ -62,6 +62,7 @@ import { _initDiceRoller } from "./dice.js";
  * @property {function(): void} debug.printTileMap - Prints the tile map to the console.
  */
 export const sh = {
+  ui: {},
   config,
   state,
   init,

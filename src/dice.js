@@ -276,7 +276,7 @@ export class DiceRoller {
   }
 
   hide() {
-    this.container.style.display = "";
+    this.container.style.display = "none";
     this.container.style.opacity = "0";
     setTimeout(() => (document.body.style.pointerEvents = "auto"), 400);
   }

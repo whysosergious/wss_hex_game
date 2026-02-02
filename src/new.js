@@ -344,6 +344,8 @@ sh.executeMovement = function (fromIndex, toIndex) {
   this.clearSelection();
   this.toggleMovementMode();
 
+  this.ui.statusbar.update();
+
   console.log(
     `[sh] EXECUTED: [${originalArmies.join(",")}→${path.map((idx, i) => (i === 0 ? 1 : i === path.length - 1 ? originalArmies[i] + movingArmy : originalArmies[i] + 1)).join(",")}]`,
   );
@@ -454,6 +456,8 @@ sh.nextTurn = function () {
   console.log(
     `[sh] Turn ${this.state.turnState.turnNumber}: Player ${this.getActivePlayer()}`,
   );
+
+  this.ui.statusbar.update();
 };
 
 // Initialize players with preset colors
@@ -664,6 +668,8 @@ sh.executeAttack = async function (fromIndex, toIndex) {
   this.consumeAction();
 
   console.log(`[sh] ${winningPlayer} WINS: ${resultArmy} army remains`);
+
+  this.ui.statusbar.update();
 };
 
 /*****

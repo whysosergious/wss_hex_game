@@ -41,6 +41,9 @@ export function setArmyStrength(tileIndex, value, isPreview = false) {
   }
 
   tile.label.material.map.needsUpdate = true;
+
+  this.ui.statusbar.update();
+
   console.log(`[sh] Tile ${tileIndex} army: ${value}`);
 }
 
@@ -180,6 +183,8 @@ export function resetScene(q = 1, r = 1) {
   this.state.camera.position.copy(savedCamera.position);
   this.state.controls.target.copy(savedCamera.target);
   this.state.controls.update();
+
+  sh.ui.statusbar.update();
 
   console.log("[sh] Scene reset - camera preserved");
 }

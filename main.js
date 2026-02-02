@@ -1,9 +1,8 @@
 import sh from "./src/sh.js";
 
 import "./src/new.js";
+import "./src/ui/statusbar.js";
 
 console.log("init");
 
-document.addEventListener("DOMContentLoaded", () => {
-  sh.init();
-});
+sh.init();
