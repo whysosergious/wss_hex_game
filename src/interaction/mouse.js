@@ -56,7 +56,8 @@ export function _updateHover() {
       const targetTile = tiles[tileIndex];
       if (
         targetTile.playerId !== undefined &&
-        targetTile.playerId !== this.getActivePlayer()
+        targetTile.playerId !== this.getActivePlayer() &&
+        targetTile.playerId !== 0
       ) {
         if (this.state.movementPreview.length > 1) {
           // *** LAST TILE IN PATH = attack origin ***
