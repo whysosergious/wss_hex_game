@@ -220,8 +220,8 @@ sh.updateMovementPreview = function (hoverIndex) {
     });
 
     // *** RED X ON LAST REACHABLE (FINAL ARMY STATE) ***
-    const lastReachableIndex = path[path.length - 2];
-    this.showAttackX(lastReachableIndex);
+    this.state.movementPreview[this.state.movementPreview.length - 1];
+    this.showAttackX(lastReachableIndex, hoverIndex);
     return;
   }
 
@@ -520,27 +520,28 @@ sh.updateAttackPreview = function (hoverIndex) {
 };
 
 sh.showAttackX = function (lastReachableIndex, targetIndex) {
+  // Set the preview tile tracker
+  this.state.attackPreviewTile = lastReachableIndex;
+
   const tile = this.state.tiles[lastReachableIndex];
   const targetTile = this.state.tiles[targetIndex];
   const ctx = tile.ctx;
   const canvas = tile.canvas;
 
-  // *** FORCE REDRAW ARMY FIRST (with preview if active) ***
+  // *** FORCE REDRAW ARMY FIRST ***
   if (tile.armyPreview !== undefined) {
     this._setArmyPreview(tile, tile.armyPreview);
   } else {
     this.setArmyStrength(lastReachableIndex, tile.army);
   }
 
-  // *** THEN DRAW MASSIVE RED X ON TOP ***
+  // *** RED X ON TOP ***
   ctx.save();
-  ctx.strokeStyle = "#ff0000"; // Bright red
-  ctx.lineWidth = 16; // THICK
+  ctx.strokeStyle = "#ff0000";
+  ctx.lineWidth = 16;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-  ctx.globalCompositeOperation = "source-over";
 
-  // *** HUGE X covering entire canvas ***
   ctx.beginPath();
   ctx.moveTo(15, 15);
   ctx.lineTo(canvas.width - 15, canvas.height - 15);
@@ -550,8 +551,6 @@ sh.showAttackX = function (lastReachableIndex, targetIndex) {
 
   ctx.restore();
   tile.label.material.map.needsUpdate = true;
-
-  console.log(`[sh] RED X DRAWN on tile ${lastReachableIndex}`);
 };
 
 sh.clearAttackPreview = function () {
@@ -560,7 +559,6 @@ sh.clearAttackPreview = function () {
     this.state.attackPreviewTile !== null
   ) {
     const tile = this.state.tiles[this.state.attackPreviewTile];
-    // Restore army display (handles both preview/real)
     if (tile.armyPreview !== undefined) {
       this._setArmyPreview(tile, tile.armyPreview);
     } else {
@@ -570,23 +568,33 @@ sh.clearAttackPreview = function () {
   }
 };
 
-sh.executeAttack = function (fromIndex, toIndex) {
-  const fromTile = this.state.tiles[fromIndex];
-  const toTile = this.state.tiles[toIndex];
-
-  // *** SIMPLE ATTACK: attacker army vs defender army ***
-  if (fromTile.army <= toTile.army) {
-    // Defender wins - attacker loses all but 1
-    this.setArmyStrength(fromIndex, 1);
-  } else {
-    // Attacker wins - conquer tile
-    this.assignTileToPlayer(toIndex, this.getActivePlayer());
-    this.setArmyStrength(toIndex, fromTile.army - toTile.army);
-    this.setArmyStrength(fromIndex, 1);
-  }
-
-  this.consumeAction(); // Decrement actionsRemaining
-};
+// sh.executeAttack = async function (fromIndex, toIndex) {
+//   const fromTile = this.state.tiles[fromIndex];
+//   const toTile = this.state.tiles[toIndex];
+//
+//   console.log(
+//     `[sh] ATTACK: ${fromIndex}(${fromTile.army}) vs ${toIndex}(${toTile.army})`,
+//   );
+//
+//   // Use source tile army for dice roll (not path preview)
+//   const [attackResult, defendResult] = await this.diceRoller.roll(
+//     fromTile.army,
+//     toTile.army,
+//   );
+//
+//   // *** SIMPLE ATTACK: attacker army vs defender army ***
+//   if (fromTile.army <= toTile.army) {
+//     // Defender wins - attacker loses all but 1
+//     this.setArmyStrength(fromIndex, 1);
+//   } else {
+//     // Attacker wins - conquer tile
+//     this.assignTileToPlayer(toIndex, this.getActivePlayer());
+//     this.setArmyStrength(toIndex, fromTile.army - toTile.army);
+//     this.setArmyStrength(fromIndex, 1);
+//   }
+//
+//   this.consumeAction(); // Decrement actionsRemaining
+// };
 
 sh.consumeAction = function () {
   this.state.turnState.actionsRemaining--;
@@ -602,6 +610,60 @@ sh.endTurn = function () {
   } else {
     this.nextPlayer();
   }
+};
+
+sh.executeAttack = async function (fromIndex, toIndex) {
+  const fromTile = this.state.tiles[fromIndex];
+  const toTile = this.state.tiles[toIndex];
+
+  if (!this.diceRoller) {
+    console.error("[sh] DiceRoller not initialized!");
+    return;
+  }
+
+  const [attackResult, defendResult] = await this.diceRoller.roll(
+    fromTile.army,
+    toTile.army,
+  );
+
+  let winnerIndex,
+    loserIndex,
+    winningPlayer,
+    winArmy,
+    losingScore,
+    winningScore;
+
+  if (attackResult > defendResult) {
+    winnerIndex = fromIndex;
+    loserIndex = toIndex;
+    winningPlayer = this.getActivePlayer();
+    winArmy = fromTile.army;
+    winningScore = attackResult;
+    losingScore = defendResult;
+  } else {
+    winnerIndex = toIndex;
+    loserIndex = fromIndex;
+    winningPlayer = toTile.playerId;
+    winArmy = toTile.army;
+    winningScore = defendResult;
+    losingScore = attackResult;
+  }
+
+  const resultArmy = winArmy - ~~(winArmy * (losingScore / winningScore));
+
+  this.assignTileToPlayer(loserIndex, winningPlayer);
+  this.setArmyStrength(loserIndex, resultArmy);
+  this.setArmyStrength(winnerIndex, 1);
+
+  // Clear everything
+  this.clearMovementPreview();
+  this.clearReachableTiles();
+  this.clearAttackPreview();
+  this.clearSelection();
+  this.toggleMovementMode();
+  this.consumeAction();
+
+  console.log(`[sh] ${winningPlayer} WINS: ${resultArmy} army remains`);
 };
 
 /*****

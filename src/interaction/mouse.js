@@ -34,6 +34,7 @@ export function _updateHover() {
   }
 
   this.state.hoveredTile = null;
+  this.state.attack.possible = false;
   document.body.style.cursor = "default";
 
   raycaster.setFromCamera(mouse, camera);
@@ -49,28 +50,38 @@ export function _updateHover() {
     document.body.style.cursor = "pointer";
 
     if (this.state.movementMode && this.state.selectedTile !== null) {
-      // *** MOVEMENT PATH FIRST ***
       this.updateMovementPreview(tileIndex);
 
-      // *** ATTACK CHECK using EXISTING movementPreview ***
       const targetTile = tiles[tileIndex];
       if (
         targetTile.playerId !== undefined &&
         targetTile.playerId !== this.getActivePlayer() &&
         targetTile.playerId !== 0
       ) {
-        if (this.state.movementPreview.length > 1) {
-          // *** LAST TILE IN PATH = attack origin ***
+        // path to enemy gets computed inside updateMovementPreview
+        if (this.state.movementPreview.length >= 0) {
           const lastReachableIndex =
-            this.state.movementPreview[this.state.movementPreview.length - 1];
-          const lastTile = tiles[lastReachableIndex];
+            this.state.movementPreview[this.state.movementPreview.length - 1] ??
+            this.getSelectedTile();
+          const lastTile = this.state.tiles[lastReachableIndex];
           const finalAttackerArmy = lastTile.armyPreview || lastTile.army;
 
           console.log(
             `[sh] ATTACK POSSIBLE: Tile ${tileIndex} (${finalAttackerArmy} vs ${targetTile.army})`,
           );
+
+          this.state.attack.possible = true;
+          this.state.attack.offence.index = lastReachableIndex;
+          this.state.attack.offence.army = finalAttackerArmy;
+          this.state.attack.defence.index = tileIndex;
+          this.state.attack.defence.army = targetTile.army;
+
           this.showAttackX(lastReachableIndex, tileIndex);
+        } else {
+          this.state.attack.possible = false;
         }
+      } else {
+        this.state.attack.possible = false;
       }
     } else if (tileIndex !== selectedTile) {
       // *** RESTORE NORMAL HOVER (your original logic) ***
@@ -149,7 +160,6 @@ export function _selectTile() {
 
   const tileIndex = this.state.hoveredTile;
   const tile = this.state.tiles[tileIndex];
-  console.log(tile.playerId);
 
   // in movement mode, for now, only allow neutral or your own selection
   if (
@@ -157,10 +167,27 @@ export function _selectTile() {
     tile.playerId !== this.getActivePlayer() &&
     tile.playerId !== undefined
   ) {
-    console.log(`[sh] Cannot select enemy tile ${tileIndex}`);
+    if (this.state.attack.possible) {
+      console.log("EXECUTING ATTACK via state.attack", this.state.attack);
+
+      // First move to the last reachable attacking tile
+      this.executeMovement(
+        this.state.selectedTile,
+        this.state.attack.offence.index,
+      );
+
+      // Then resolve combat from that tile into the enemy tile
+      this.executeAttack(
+        this.state.attack.offence.index,
+        this.state.attack.defence.index,
+      );
+    } else {
+      console.log(
+        `[sh] Cannot select enemy tile ${tileIndex} (no path/attack)`,
+      );
+    }
     return;
   }
-
   // *** ONLY ALLOW ACTIVE PLAYER'S OWN TILES ***
   if (!this.state.movementMode && tile.playerId !== this.getActivePlayer()) {
     console.log(`[sh] Cannot select enemy/neutral tile ${tileIndex}`);
@@ -169,12 +196,29 @@ export function _selectTile() {
 
   // *** MOVEMENT MODE ***
   if (this.state.movementMode) {
-    // Already in movement - EXECUTE to hovered tile
     if (this.state.selectedTile !== null) {
-      this.executeMovement(this.state.selectedTile, tileIndex);
+      const targetTile = this.state.tiles[this.state.hoveredTile];
+
+      // *** FIRST: Generate path to check attack possibility ***
+      this.updateMovementPreview(this.state.hoveredTile);
+
+      // *** NOW check if it's an attack ***
+      if (
+        targetTile.playerId !== undefined &&
+        targetTile.playerId !== this.getActivePlayer() &&
+        this.state.movementPreview.length > 1 // Path exists
+      ) {
+        console.log(
+          `[sh] EXECUTING ATTACK: ${this.state.selectedTile} → ${this.state.hoveredTile}`,
+        );
+        this.executeAttack(this.state.selectedTile, this.state.hoveredTile);
+        return;
+      }
+
+      // Normal movement
+      this.executeMovement(this.state.selectedTile, this.state.hoveredTile);
       return;
     }
-    // No source selected? Shouldn't happen
     return;
   }
 

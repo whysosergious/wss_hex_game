@@ -72,6 +72,12 @@ export const state = {
     actionsRemaining: 3, // Decrements per move/attack
     turnsRemaining: 1, // Per round
   },
+  attack: {
+    possible: false,
+    offence: { index: null, army: null },
+    defence: { index: null, army: null },
+  },
+  attackPreviewTile: null,
   attackPreview: {
     active: false,
     sourceIndex: null,

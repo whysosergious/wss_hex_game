@@ -10,14 +10,14 @@ export class DiceRoller {
     this.container = document.createElement("div");
     this.container.id = "dice-roller";
     this.container.style.cssText = `
-      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
       width: 90vw; max-width: 1200px; height: 70vh; max-height: 500px; 
       z-index: 10000; opacity: 0; transition: opacity 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
       background: rgba(20, 20, 40, 0.97);
       backdrop-filter: blur(50px); border-radius: 24px;
       border: 1px solid rgba(100, 200, 255, 0.2);
       box-shadow: 0 32px 64px rgba(0, 20, 80, 0.6);
-      display: flex; align-items: stretch; padding: 32px; gap: 40px;
+       align-items: stretch; padding: 32px; gap: 40px;
       font-family: -apple-system, BlinkMacSystemFont, sans-serif;
     `;
     document.body.appendChild(this.container);
@@ -270,11 +270,13 @@ export class DiceRoller {
   }
 
   show() {
+    this.container.style.display = "flex";
     document.body.style.pointerEvents = "none";
     this.container.style.opacity = "1";
   }
 
   hide() {
+    this.container.style.display = "";
     this.container.style.opacity = "0";
     setTimeout(() => (document.body.style.pointerEvents = "auto"), 400);
   }
