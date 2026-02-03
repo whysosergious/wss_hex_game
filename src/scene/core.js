@@ -28,7 +28,7 @@ export function _initScene() {
   scene.add(directional);
 
   const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(30, 30),
+    new THREE.PlaneGeometry(3000, 3000),
     new THREE.MeshLambertMaterial({ color: 0x333333 }),
   );
   floor.rotation.x = -Math.PI / 2;
@@ -63,3 +63,4 @@ export function _initCamera() {
   this.state.camera = camera;
   this.state.scene.add(camera);
 }
+
