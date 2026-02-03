@@ -118,17 +118,28 @@ sh.getPlayerTiles = function (playerId) {
 
 /////// movement system
 
+sh.setMovementMode = function (bool) {
+  if (bool === true) {
+    this.clearReachableTiles();
+    this.state.movementMode = true;
+    console.log("[sh] Movement mode ON - select source tile");
+  } else if (bool === false) {
+    this.clearMovementPreview();
+    this.clearReachableTiles();
+    this.state.movementMode = false;
+    console.trace("[sh] Movement mode OFF");
+  } else {
+    console.error(
+      "[sh] setMovementMode requires a boolean argument (true/false)",
+    );
+  }
+};
 // Toggle movement mode
 sh.toggleMovementMode = function () {
   if (this.state.movementMode) {
-    this.clearMovementPreview();
-    this.clearReachableTiles(); // *** NEW ***
-    this.state.movementMode = false;
-    console.log("[sh] Movement mode OFF");
+    sh.setMovementMode(false);
   } else {
-    this.clearReachableTiles(); // *** NEW ***
-    this.state.movementMode = true;
-    console.log("[sh] Movement mode ON - select source tile");
+    sh.setMovementMode(true);
   }
 };
 
@@ -291,7 +302,7 @@ sh._setArmyPreview = function (tile, previewValue) {
   tile.label.material.map.needsUpdate = true;
 };
 
-sh.executeMovement = function (fromIndex, toIndex) {
+sh.executeMovement = function (fromIndex, toIndex, count_as_action = true) {
   const fromTile = this.state.tiles[fromIndex];
   const toTile = this.state.tiles[toIndex];
   const pathLength = this.hexDistance(
@@ -342,9 +353,13 @@ sh.executeMovement = function (fromIndex, toIndex) {
   this.clearMovementPreview();
   this.clearReachableTiles();
   this.clearSelection();
-  this.toggleMovementMode();
+  this.setMovementMode(false);
 
-  this.ui.statusbar.update();
+  if (count_as_action) {
+    this.consumeAction();
+  } else {
+    this.ui.statusbar.update();
+  }
 
   console.log(
     `[sh] EXECUTED: [${originalArmies.join(",")}→${path.map((idx, i) => (i === 0 ? 1 : i === path.length - 1 ? originalArmies[i] + movingArmy : originalArmies[i] + 1)).join(",")}]`,
@@ -452,7 +467,7 @@ sh.nextTurn = function () {
   this.state.turnState.activePlayer =
     (this.state.turnState.activePlayer % 6) + 1;
   this.state.turnState.turnNumber++;
-  this.toggleMovementMode(); // Exit movement mode
+
   console.log(
     `[sh] Turn ${this.state.turnState.turnNumber}: Player ${this.getActivePlayer()}`,
   );
@@ -572,47 +587,55 @@ sh.clearAttackPreview = function () {
   }
 };
 
-// sh.executeAttack = async function (fromIndex, toIndex) {
-//   const fromTile = this.state.tiles[fromIndex];
-//   const toTile = this.state.tiles[toIndex];
-//
-//   console.log(
-//     `[sh] ATTACK: ${fromIndex}(${fromTile.army}) vs ${toIndex}(${toTile.army})`,
-//   );
-//
-//   // Use source tile army for dice roll (not path preview)
-//   const [attackResult, defendResult] = await this.diceRoller.roll(
-//     fromTile.army,
-//     toTile.army,
-//   );
-//
-//   // *** SIMPLE ATTACK: attacker army vs defender army ***
-//   if (fromTile.army <= toTile.army) {
-//     // Defender wins - attacker loses all but 1
-//     this.setArmyStrength(fromIndex, 1);
-//   } else {
-//     // Attacker wins - conquer tile
-//     this.assignTileToPlayer(toIndex, this.getActivePlayer());
-//     this.setArmyStrength(toIndex, fromTile.army - toTile.army);
-//     this.setArmyStrength(fromIndex, 1);
-//   }
-//
-//   this.consumeAction(); // Decrement actionsRemaining
-// };
-
 sh.consumeAction = function () {
-  this.state.turnState.actionsRemaining--;
+  this.state.turnState.actionNumber++;
   if (this.state.turnState.actionsRemaining <= 0) {
-    this.endTurn(); // → next player
+    this.state.turnState.actionNumber = 1;
+    this.endTurn();
   }
+  sh.ui.statusbar.update();
+
+  console.log("Action taken");
 };
 
 sh.endTurn = function () {
-  this.state.turnState.turnsRemaining--;
+  this.state.turnState.actionNumber = 1;
+  this.state.turnState.turnNumber++;
+
   if (this.state.turnState.turnsRemaining <= 0) {
     this.endRound();
-  } else {
-    this.nextPlayer();
+    sh.ui.statusbar.update();
+
+    return;
+  }
+
+  for (let i = 1; i <= this.config.playerCount; i++) {
+    const player = this.state.players[i];
+    if (player && player.tiles) {
+      for (const tile_index of player.tiles) {
+        setTimeout(
+          () =>
+            sh.setArmyStrength(
+              tile_index,
+              sh.state.tiles[tile_index].army +
+                this.config.reinforcementsPerTurn,
+            ),
+          i * 100,
+        );
+      }
+    }
+  }
+
+  this.nextPlayer();
+  sh.ui.statusbar.update();
+
+  console.log("Turn ended", sh.state.turnState);
+};
+
+sh.nextPlayer = function () {
+  this.state.turnState.activePlayer++;
+  if (this.state.turnState.activePlayer > this.config.playerCount) {
+    this.state.turnState.activePlayer = 1;
   }
 };
 
@@ -664,7 +687,7 @@ sh.executeAttack = async function (fromIndex, toIndex) {
   this.clearReachableTiles();
   this.clearAttackPreview();
   this.clearSelection();
-  this.toggleMovementMode();
+  this.setMovementMode(false);
   this.consumeAction();
 
   console.log(`[sh] ${winningPlayer} WINS: ${resultArmy} army remains`);

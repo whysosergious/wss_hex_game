@@ -1,3 +1,5 @@
+import { h, html } from "../lib/el.js";
+
 // status-bar.js - PROFESSIONAL STATUS BAR
 class StatusBar extends HTMLElement {
   constructor() {
@@ -88,11 +90,16 @@ class StatusBar extends HTMLElement {
         }
       </style>
       <div class="players" id="players"></div>
-      <div class="turns" id="turns">Turns left: ?</div>
+      <div class="turns" id="turns">actions: ?</div>
+      <button class="turns" id="endTurnButton">End turn</button>
     `;
 
     this.playersEl = this.shadowRoot.querySelector("#players");
     this.turnsEl = this.shadowRoot.querySelector("#turns");
+    this.endTurnButton = this.shadowRoot.querySelector("#endTurnButton");
+    this.endTurnButton.addEventListener("click", () => {
+      sh.endTurn();
+    });
     sh.onTurnChange = () => this.render();
     this.render();
   }
@@ -104,8 +111,9 @@ class StatusBar extends HTMLElement {
     const state = sh.state;
     const activePlayer = sh.getActivePlayer() || 1;
 
-    let playersHTML = "";
-    for (let i = 1; i <= 6; i++) {
+    this.playersEl.innerHTML = "";
+
+    for (let i = 1; i <= sh.config.playerCount; i++) {
       const player = state.players[i];
       const strength = player?.tiles
         ? Array.from(player.tiles).reduce(
@@ -118,17 +126,18 @@ class StatusBar extends HTMLElement {
         : "#666";
       const isActive = i === activePlayer;
 
-      playersHTML += `
+      const player_el = html`
         <div class="player ${isActive ? "active" : ""}">
           <div class="color-dot" style="background:${color}"></div>
           <span class="player-num">P${i}</span>
           <span class="strength">${strength}</span>
         </div>
       `;
+
+      this.playersEl.appendChild(player_el);
     }
 
-    this.playersEl.innerHTML = playersHTML;
-    this.turnsEl.textContent = `Turns left: ${state.turnState?.turnsRemaining || "?"}`;
+    this.turnsEl.textContent = `actions: ${state.turnState?.actionsRemaining || "?"}`;
   }
 }
 

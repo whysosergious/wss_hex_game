@@ -174,6 +174,7 @@ export function _selectTile() {
       this.executeMovement(
         this.state.selectedTile,
         this.state.attack.offence.index,
+        false,
       );
 
       // Then resolve combat from that tile into the enemy tile
@@ -181,6 +182,8 @@ export function _selectTile() {
         this.state.attack.offence.index,
         this.state.attack.defence.index,
       );
+
+      this.state.selectedTile = null;
     } else {
       console.log(
         `[sh] Cannot select enemy tile ${tileIndex} (no path/attack)`,
@@ -215,8 +218,17 @@ export function _selectTile() {
         return;
       }
 
+      let countAsAction = true;
+      if (this.state.selectedTile === this.state.hoveredTile) {
+        countAsAction = false;
+      }
+
       // Normal movement
-      this.executeMovement(this.state.selectedTile, this.state.hoveredTile);
+      this.executeMovement(
+        this.state.selectedTile,
+        this.state.hoveredTile,
+        countAsAction,
+      );
       return;
     }
     return;

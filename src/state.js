@@ -67,10 +67,16 @@ export const state = {
   previewDeltas: new Map(),
   turnState: {
     activePlayer: 1,
+    actionNumber: 1,
     turnNumber: 1,
     roundNumber: 1,
-    actionsRemaining: 3, // Decrements per move/attack
-    turnsRemaining: 1, // Per round
+    get actionsRemaining() {
+      return sh.config.actionsPerTurn - this.actionNumber + 1;
+    },
+    get turnsRemaining() {
+      if (sh.config.turnsPerRound === 0) return 1;
+      return sh.config.turnsPerRound - this.turnNumber + 1;
+    },
   },
   attack: {
     possible: false,

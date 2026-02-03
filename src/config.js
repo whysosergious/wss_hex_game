@@ -29,8 +29,11 @@
 /** @type {AppConfig} */
 export const config = {
   actionsPerTurn: 3, // Moves/attacks per turn
-  turnsPerRound: 1, // Player turns per round (default single-turn)
+  turnsPerRound: 0, // Player turns per round (default single-turn)
   roundsPerGame: 0, // 0 = unlimited
+  reinforcementsPerTurn: 1,
+  playerCount: 2,
+  maxPlayerCount: 6,
   tile: {
     spacing: 0.04,
     radius: 1.0,
