@@ -328,6 +328,7 @@ sh.executeMovement = function (fromIndex, toIndex, count_as_action = true) {
     pathLength + 1,
   );
   // *** SAME LOGIC AS PREVIEW: PRESERVE ORIGINALS + APPLY STACKING ***
+  const activePlayer = this.state.turnState.activePlayer;
   const originalArmies = path.map((idx) => this.state.tiles[idx].army);
   let movingArmy = originalArmies[0];
 
@@ -340,11 +341,11 @@ sh.executeMovement = function (fromIndex, toIndex, count_as_action = true) {
       movingArmy -= 1;
     } else if (i === path.length - 1) {
       // *** DESTINATION: ORIGINAL + REMAINDER ***
-      this.assignTileToPlayer(index, 1, 0xff4444);
+      this.assignTileToPlayer(index, activePlayer, 0xff4444);
       this.setArmyStrength(index, originalArmies[i] + movingArmy);
     } else {
       // *** PATH TILE: ORIGINAL + 1 ***
-      this.assignTileToPlayer(index, 1, 0xff4444);
+      this.assignTileToPlayer(index, activePlayer, 0xff4444);
       this.setArmyStrength(index, originalArmies[i] + 1);
       movingArmy -= 1;
     }
@@ -543,7 +544,7 @@ sh.showAttackX = function (lastReachableIndex, targetIndex) {
   this.state.attackPreviewTile = lastReachableIndex;
 
   const tile = this.state.tiles[lastReachableIndex];
-  const targetTile = this.state.tiles[targetIndex];
+  // const tile = this.state.tiles[targetIndex];
   const ctx = tile.ctx;
   const canvas = tile.canvas;
 
@@ -591,10 +592,9 @@ sh.consumeAction = function () {
   this.state.turnState.actionNumber++;
   if (this.state.turnState.actionsRemaining <= 0) {
     this.state.turnState.actionNumber = 1;
-    this.endTurn();
+    this.endTurn(); // Just ends CURRENT player's turn
   }
   sh.ui.statusbar.update();
-
   console.log("Action taken");
 };
 
@@ -603,32 +603,16 @@ sh.endTurn = function () {
   this.state.turnState.turnNumber++;
 
   if (this.state.turnState.turnsRemaining <= 0) {
-    this.endRound();
+    this.endRound(); // *** ALL REINFORCEMENTS HERE ***
+    this.state.turnState.turnNumber = 1;
     sh.ui.statusbar.update();
 
     return;
   }
 
-  for (let i = 1; i <= this.config.playerCount; i++) {
-    const player = this.state.players[i];
-    if (player && player.tiles) {
-      for (const tile_index of player.tiles) {
-        setTimeout(
-          () =>
-            sh.setArmyStrength(
-              tile_index,
-              sh.state.tiles[tile_index].army +
-                this.config.reinforcementsPerTurn,
-            ),
-          i * 100,
-        );
-      }
-    }
-  }
-
+  // *** NO REINFORCEMENTS - JUST ADVANCE PLAYER ***
   this.nextPlayer();
   sh.ui.statusbar.update();
-
   console.log("Turn ended", sh.state.turnState);
 };
 
@@ -637,6 +621,28 @@ sh.nextPlayer = function () {
   if (this.state.turnState.activePlayer > this.config.playerCount) {
     this.state.turnState.activePlayer = 1;
   }
+};
+
+// *** NEW: Add this function ***
+sh.endRound = function () {
+  console.log("[sh] END OF ROUND - DISTRIBUTING REINFORCEMENTS");
+
+  // *** ANIMATED REINFORCEMENTS FOR ALL PLAYERS ***
+  for (let i = 1; i <= this.config.playerCount; i++) {
+    const player = this.state.players[i];
+    if (player && player.tiles) {
+      for (const tile_index of player.tiles) {
+        setTimeout(() => {
+          sh.setArmyStrength(
+            tile_index,
+            sh.state.tiles[tile_index].army + sh.config.reinforcementsPerTurn,
+          );
+        }, i * 100); // Staggered animation per player
+      }
+    }
+  }
+
+  this.nextPlayer(); // Start next round with player 1
 };
 
 sh.executeAttack = async function (fromIndex, toIndex) {
@@ -667,13 +673,30 @@ sh.executeAttack = async function (fromIndex, toIndex) {
     winArmy = fromTile.army;
     winningScore = attackResult;
     losingScore = defendResult;
-  } else {
+  } else if (attackResult < defendResult) {
     winnerIndex = toIndex;
     loserIndex = fromIndex;
     winningPlayer = toTile.playerId;
     winArmy = toTile.army;
     winningScore = defendResult;
     losingScore = attackResult;
+  } else {
+    this.setArmyStrength(fromIndex, 1);
+    this.setArmyStrength(toIndex, 1);
+
+    // Clear everything
+    this.clearMovementPreview();
+    this.clearReachableTiles();
+    this.clearAttackPreview();
+    this.clearSelection();
+    this.setMovementMode(false);
+    this.consumeAction();
+
+    console.log(`[sh] tied`);
+
+    this.ui.statusbar.update();
+
+    return;
   }
 
   const resultArmy = winArmy - ~~(winArmy * (losingScore / winningScore));
@@ -716,17 +739,18 @@ sh.executeAttack = async function (fromIndex, toIndex) {
 const test = () => {
   sh.resetScene(5, 5);
   console.log("Center index:", sh.getTileIndex(0, 0)); // Should be 12 or similar
-  sh.assignTileToPlayer([sh.getTileIndex(0, 0), 56, 66, 75], 1);
-  sh.setArmyStrength(sh.getTileIndex(0, 0), 8);
-  sh.setArmyStrength(56, 1);
-  sh.setArmyStrength(66, 1);
-  sh.setArmyStrength(75, 2);
 
-  sh.assignTileToPlayer(63, 2);
-  sh.setArmyStrength(63, 4);
+  // *** map zones
+  // blocked
+  sh.assignTileToPlayer([65, 56, 55, 45, 56, 66, 75, 57], 0);
 
-  sh.assignTileToPlayer(36, 0);
-  sh.assignTileToPlayer(47, 0);
+  // p1
+  sh.assignTileToPlayer([20, 28, 29, 38, 39], 1);
+  sh.setArmyStrength([20, 28, 29, 38, 39], 4);
+
+  // p2
+  sh.assignTileToPlayer([61, 62, 70, 71, 78], 2);
+  sh.setArmyStrength([61, 62, 70, 71, 78], 4);
 
   // sh.toggleMovementMode(); // ON
   // sh.selectTileByCoords(0, 0); // Selects center ✓

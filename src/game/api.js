@@ -17,34 +17,40 @@ import * as THREE from "three";
  * @param {number} value - The new army strength value.
  * @returns {void}
  */
-export function setArmyStrength(tileIndex, value, isPreview = false) {
-  const tile = this.state.tiles[tileIndex];
-  if (!tile || !tile.label?.material?.map) {
-    console.warn("[sh] Tile", tileIndex, "not ready");
-    return;
+export function setArmyStrength(tiles, value, isPreview = false) {
+  if (this.config.maxArmyStrength && value > this.config.maxArmyStrength) {
+    value = this.config.maxArmyStrength;
   }
 
-  if (!isPreview) {
-    tile.army = value;
+  for (const tileIndex of Array.isArray(tiles) ? tiles : [tiles]) {
+    const tile = this.state.tiles[tileIndex];
+    if (!tile || !tile.label?.material?.map) {
+      console.warn("[sh] Tile", tileIndex, "not ready");
+      return;
+    }
+
+    if (!isPreview) {
+      tile.army = value;
+    }
+
+    const ctx = tile.ctx;
+    const canvas = tile.canvas;
+    const showLabel = value > 0 || this.config.tile.showEmptyLabel;
+
+    // clear the canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (showLabel) {
+      ctx.strokeText(value.toString(), 64, 32);
+      ctx.fillText(value.toString(), 64, 32);
+    }
+
+    tile.label.material.map.needsUpdate = true;
+
+    this.ui.statusbar.update();
+
+    console.log(`[sh] Tile ${tileIndex} army: ${value}`);
   }
-
-  const ctx = tile.ctx;
-  const canvas = tile.canvas;
-  const showLabel = value > 0 || this.config.tile.showEmptyLabel;
-
-  // clear the canvas
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  if (showLabel) {
-    ctx.strokeText(value.toString(), 64, 32);
-    ctx.fillText(value.toString(), 64, 32);
-  }
-
-  tile.label.material.map.needsUpdate = true;
-
-  this.ui.statusbar.update();
-
-  console.log(`[sh] Tile ${tileIndex} army: ${value}`);
 }
 
 /**

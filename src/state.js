@@ -74,8 +74,13 @@ export const state = {
       return sh.config.actionsPerTurn - this.actionNumber + 1;
     },
     get turnsRemaining() {
-      if (sh.config.turnsPerRound === 0) return 1;
-      return sh.config.turnsPerRound - this.turnNumber + 1;
+      return (
+        sh.config.turnsPerRound * sh.config.playerCount - this.turnNumber + 1
+      );
+    },
+    get roundsRemaining() {
+      if (sh.config.roundsPerGame === 0) return 1;
+      return sh.config.roundsPerGame - this.roundNumber + 1;
     },
   },
   attack: {
