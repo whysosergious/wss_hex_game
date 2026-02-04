@@ -30,10 +30,15 @@ export function _initControls() {
   controls.minDistance = this.config.camera.zoomMin;
   controls.maxDistance = this.config.camera.zoomMax;
   controls.maxPolarAngle = Math.PI / 2.1;
-  controls.enablePan = false; // Disable pan by default, enable through WASD
+  controls.enablePan = true; // Disable pan by default, enable through WASD
 
   controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
   controls.mouseButtons.MIDDLE = THREE.MOUSE.DOLLY;
+
+  controls.touches = {
+    ONE: THREE.TOUCH.ROTATE, // One finger drag = orbit
+    TWO: THREE.TOUCH.DOLLY_PAN, // Two fingers = pinch zoom + drag pan/strafe
+  };
 
   this.state.controls = controls;
 
@@ -108,4 +113,3 @@ export function _initControls() {
   rendererDom.addEventListener("click", onPointerClick);
   rendererDom.style.cursor = "default"; // Set default cursor style
 }
-
