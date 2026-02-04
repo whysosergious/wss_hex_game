@@ -10,4 +10,114 @@ body {
   position: relative;
   overflow: hidden;
   background-color: #333;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', sans-serif;
+}
+
+.panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90vw;
+    max-width: 400px;
+    background: #202020;
+    border: 1px solid #3a3a3a;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.hidden {
+    display: none;
+}
+
+.panel h2 {
+    color: #f0f0f0;
+    text-align: center;
+    font-size: 20px;
+    margin-bottom: 10px;
+}
+
+.close-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    color: #aaa;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+}
+.close-button:hover {
+    color: #fff;
+}
+
+.menu-button {
+    background: #333;
+    border: 1px solid #444;
+    color: #f0f0f0;
+    padding: 12px;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    text-align: center;
+}
+.menu-button:hover {
+    background: #404040;
+}
+
+#settings-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #2a2a2a;
+    padding: 10px;
+    border-radius: 4px;
+}
+.setting-item label {
+    color: #ccc;
+    font-size: 14px;
+}
+.setting-item input {
+    background: #333;
+    border: 1px solid #555;
+    color: #f0f0f0;
+    padding: 5px 8px;
+    border-radius: 3px;
+    width: 100px;
+}
+.setting-item input[type="checkbox"] {
+    width: auto;
+    height: 18px;
+    width: 18px;
+}
+
+
+/* Mobile Styles */
+@media (max-width: 600px) {
+    status-bar {
+        /* This won't work directly on shadow DOM from here, 
+           but we can adjust things around it or add styles inside the component */
+        left: 10px;
+        right: 10px;
+        transform: translateX(0);
+        width: auto;
+        padding: 0 10px !important;
+    }
+
+    /* We need to inject styles into the shadow DOM for this to work */
+    /* A more robust solution is needed if we want to style it from outside */
 }

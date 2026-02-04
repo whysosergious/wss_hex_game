@@ -34,6 +34,26 @@ class StatusBar extends HTMLElement {
           z-index: 1000;
           backdrop-filter: blur(8px);
         }
+
+        #menu-button {
+            width: 16px;
+            height: 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 3px;
+        }
+        #menu-button:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        #menu-button .line {
+            width: 100%;
+            height: 2px;
+            background: #999999;
+            border-radius: 1px;
+        }
         
         .players {
           display: flex;
@@ -79,26 +99,66 @@ class StatusBar extends HTMLElement {
           margin-left: 4px;
         }
         
-        .turns {
+        .turns, .end-turn-btn {
           padding: 6px 12px;
-          background: rgba(0,0,0,0.4);
-          border-radius: 3px;
-          border: 1px solid rgba(255,255,255,0.08);
           font-size: 13px;
           color: #888;
           white-space: nowrap;
         }
+        
+        .end-turn-btn {
+          background: rgba(0,0,0,0.4);
+          border-radius: 3px;
+          border: 1px solid rgba(255,255,255,0.08);
+        }
+
+
+        @media (max-width: 768px) {
+            :host {
+                width: calc(100% - 20px);
+                left: 10px;
+                transform: none;
+                padding: 0 10px !important;
+            }
+            .players {
+                overflow-x: auto;
+                -ms-overflow-style: none;
+                scrollbar-width: none; 
+            }
+            .players::-webkit-scrollbar {
+                display: none;
+            }
+            .player {
+                padding: 0 8px;
+                font-size: 12px;
+            }
+            .turns {
+                padding: 6px 8px;
+                font-size: 12px;
+            }
+        }
       </style>
+      <div id="menu-button">
+        <div class="line"></div>
+        <div class="line"></div>
+        <div class="line"></div>
+      </div>
       <div class="players" id="players"></div>
       <div class="turns" id="turns">actions: ?</div>
-      <button class="turns" id="endTurnButton">End turn</button>
+      <button class="end-turn-btn" id="endTurnButton">End turn</button>
     `;
 
     this.playersEl = this.shadowRoot.querySelector("#players");
     this.turnsEl = this.shadowRoot.querySelector("#turns");
     this.endTurnButton = this.shadowRoot.querySelector("#endTurnButton");
+    this.menuButton = this.shadowRoot.querySelector("#menu-button");
+
     this.endTurnButton.addEventListener("click", () => {
       sh.endTurn();
+    });
+    this.menuButton.addEventListener("click", () => {
+      // TODO: Open menu
+      console.log("Menu button clicked");
     });
     sh.onTurnChange = () => this.render();
     this.render();

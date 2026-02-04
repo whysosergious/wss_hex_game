@@ -8,6 +8,21 @@
   <body>
     <status-bar></status-bar>
     <sh-hud></sh-hud>
+
+    <div id="menu-panel" class="panel hidden">
+        <button id="close-menu" class="close-button">X</button>
+        <h2>Menu</h2>
+        <button class="menu-button" id="new-game-button">New Game</button>
+        <button class="menu-button" id="map-mode-button">Map Mode</button>
+        <button class="menu-button" id="settings-button">Settings</button>
+    </div>
+
+    <div id="settings-panel" class="panel hidden">
+        <button id="close-settings" class="close-button">X</button>
+        <h2>Settings</h2>
+        <div id="settings-container"></div>
+    </div>
+
     <!-- ES Module Shims for import maps -->
     <!-- <script -->
     <!--   async -->
