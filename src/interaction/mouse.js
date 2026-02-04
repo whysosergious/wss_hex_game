@@ -209,12 +209,27 @@ export function _selectTile() {
       if (
         targetTile.playerId !== undefined &&
         targetTile.playerId !== this.getActivePlayer() &&
-        this.state.movementPreview.length > 1 // Path exists
+        this.state.movementPreview.length > 0 // Path exists
       ) {
+        const attackingTileIndex = this.state.movementPreview[this.state.movementPreview.length - 1];
         console.log(
-          `[sh] EXECUTING ATTACK: ${this.state.selectedTile} → ${this.state.hoveredTile}`,
+          `[sh] EXECUTING ATTACK (fallback): ${this.state.selectedTile} → ${attackingTileIndex} → ${this.state.hoveredTile}`,
         );
-        this.executeAttack(this.state.selectedTile, this.state.hoveredTile);
+
+        // First move to the last reachable attacking tile
+        this.executeMovement(
+          this.state.selectedTile,
+          attackingTileIndex,
+          false,
+        );
+
+        // Then resolve combat from that tile into the enemy tile
+        this.executeAttack(
+          attackingTileIndex,
+          this.state.hoveredTile,
+        );
+
+        this.state.selectedTile = null;
         return;
       }
 
