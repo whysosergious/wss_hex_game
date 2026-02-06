@@ -35,6 +35,7 @@ export const config = {
   playerCount: 2,
   maxPlayerCount: 6,
   maxArmyStrength: 10, // 0 no limit
+  editorMapSize: { q: 20, r: 20 },
   tile: {
     spacing: 0.04,
     radius: 1.0,

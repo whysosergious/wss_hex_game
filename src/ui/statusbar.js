@@ -5,6 +5,7 @@ class StatusBar extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
+    this.mode = "game"; // 'game' or 'editor'
   }
 
   connectedCallback() {
@@ -20,7 +21,7 @@ class StatusBar extends HTMLElement {
           transform: translateX(-50%);
           background: #111;
           height: 40px;
-          padding: 0px 20px !important;
+          padding: 0px 10px !important;
           border-radius: 3px;
           display: flex;
           align-items: center;
@@ -33,17 +34,19 @@ class StatusBar extends HTMLElement {
           box-shadow: 0 2px 16px rgba(0,0,0,0.5);
           z-index: 1000;
           backdrop-filter: blur(8px);
+          max-width: 95vw;
         }
 
         #menu-button {
-            width: 16px;
-            height: 16px;
+            width: 16px; 
+            height: 16px; 
             display: flex;
             flex-direction: column;
             justify-content: space-around;
             cursor: pointer;
             padding: 6px;
             border-radius: 3px;
+            margin-right: 5px;
         }
         #menu-button:hover {
             background: rgba(255, 255, 255, 0.1);
@@ -55,6 +58,15 @@ class StatusBar extends HTMLElement {
             border-radius: 1px;
         }
         
+        /* Game Controls */
+        #game-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            overflow: hidden;
+        }
+
         .players {
           display: flex;
           gap: 8px;
@@ -99,26 +111,48 @@ class StatusBar extends HTMLElement {
           margin-left: 4px;
         }
         
-        .turns, .end-turn-btn {
+        .turns, .action-btn {
           padding: 6px 12px;
           font-size: 13px;
           color: #888;
           white-space: nowrap;
         }
         
-        .end-turn-btn {
+        .action-btn {
           background: rgba(0,0,0,0.4);
           border-radius: 3px;
           border: 1px solid rgba(255,255,255,0.08);
+          cursor: pointer;
+          color: #ccc;
+        }
+        .action-btn:hover {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
         }
 
+        /* Editor Controls */
+        #editor-controls {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+        }
+        
+        input {
+            background: #222;
+            border: 1px solid #444;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 3px;
+            width: 100px;
+        }
 
         @media (max-width: 768px) {
             :host {
                 width: calc(100% - 20px);
                 left: 10px;
                 transform: none;
-                padding: 0 10px !important;
+                padding: 0 5px !important;
             }
             .players {
                 overflow-x: auto;
@@ -132,20 +166,35 @@ class StatusBar extends HTMLElement {
                 padding: 0 8px;
                 font-size: 12px;
             }
-            .turns {
+            .turns, .action-btn {
                 padding: 6px 8px;
                 font-size: 12px;
             }
+            
+            #editor-controls input {
+                width: 80px;
+            }
         }
       </style>
+      
       <div id="menu-button">
         <div class="line"></div>
         <div class="line"></div>
         <div class="line"></div>
       </div>
-      <div class="players" id="players"></div>
-      <div class="turns" id="turns">actions: ?</div>
-      <button class="end-turn-btn" id="endTurnButton">End turn</button>
+      
+      <div id="game-controls">
+          <div class="players" id="players"></div>
+          <div class="turns" id="turns">actions: ?</div>
+          <button class="action-btn" id="endTurnButton">End turn</button>
+      </div>
+      
+      <div id="editor-controls">
+          <input id="map-name" placeholder="Map Name" />
+          <button class="action-btn" id="save-btn">Save</button>
+          <button class="action-btn" id="load-btn">Load</button>
+          <button class="action-btn" id="data-btn">Data</button>
+      </div>
     `;
 
     this.playersEl = this.shadowRoot.querySelector("#players");
@@ -153,13 +202,71 @@ class StatusBar extends HTMLElement {
     this.endTurnButton = this.shadowRoot.querySelector("#endTurnButton");
     this.menuButton = this.shadowRoot.querySelector("#menu-button");
 
+    this.gameControls = this.shadowRoot.querySelector("#game-controls");
+    this.editorControls = this.shadowRoot.querySelector("#editor-controls");
+    this.mapNameInput = this.shadowRoot.querySelector("#map-name");
+
     this.endTurnButton.addEventListener("click", () => {
       sh.endTurn();
     });
-    this.menuButton.addEventListener("click", () => {
-      // TODO: Open menu
-      console.log("Menu button clicked");
+    // Menu button event listener is attached in src/ui/menu.js,
+    // but better to dispatch an event or let menu.js find it.
+    // Menu.js finds it via ID.
+
+    // Editor listeners
+    this.shadowRoot.querySelector("#save-btn").addEventListener("click", () => {
+      const name = this.mapNameInput.value;
+      if (name) {
+        sh.saveMap(name);
+        alert(`Map '${name}' saved!`);
+      } else {
+        alert("Please enter a map name.");
+      }
     });
+
+    this.shadowRoot.querySelector("#load-btn").addEventListener("click", () => {
+      // sh.ui.menu.showLoadMapModal(); // Assuming we add this to Menu
+      // Or trigger a global event
+      if (sh.ui.menu && sh.ui.menu.showLoadMapModal) {
+        sh.ui.menu.showLoadMapModal();
+      } else {
+        console.log("Load Map Modal not implemented yet");
+      }
+    });
+
+    this.shadowRoot.querySelector("#data-btn").addEventListener("click", () => {
+      // Show raw JSON
+      const data = [];
+      sh.state.tiles.forEach((tile) => {
+        // Only include tiles that are not UNUSED
+        if (tile.playerId != -1) {
+          data.push({
+            q: tile.q,
+            r: tile.r,
+            playerId: tile.playerId,
+            army: tile.army,
+          });
+        }
+      });
+      const json = JSON.stringify(data, null, 2);
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard
+          .writeText(json)
+          .then(() => {
+            alert("Map data copied to clipboard!");
+          })
+          .catch((err) => {
+            console.error("Failed to copy map data to clipboard:", err);
+            alert("Failed to copy to clipboard. Check console for data.");
+            console.log(json);
+          });
+      } else {
+        alert("Clipboard API not available. Check console for data.");
+        console.log(json);
+      }
+    });
+
     sh.onTurnChange = () => this.render();
     this.render();
   }
@@ -167,7 +274,21 @@ class StatusBar extends HTMLElement {
   // push to end of callstack
   update = () => setTimeout(() => this.render());
 
+  setMode(mode) {
+    this.mode = mode;
+    this.render();
+  }
+
   render() {
+    if (this.mode === "editor") {
+      this.gameControls.style.display = "none";
+      this.editorControls.style.display = "flex";
+      return;
+    } else {
+      this.gameControls.style.display = "flex";
+      this.editorControls.style.display = "none";
+    }
+
     const state = sh.state;
     const activePlayer = sh.getActivePlayer() || 1;
 
@@ -202,3 +323,4 @@ class StatusBar extends HTMLElement {
 }
 
 customElements.define("status-bar", StatusBar);
+

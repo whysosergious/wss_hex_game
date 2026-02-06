@@ -65,6 +65,7 @@ export function _initControls() {
   const onPointerDown = (event) => {
     pointerDownPos = { x: event.clientX, y: event.clientY };
     this.state.isOrbiting = false;
+    this.state.isPointerDown = true;
   };
 
   const onPointerMove = (/** @type {MouseEvent} */ event) => {
@@ -74,8 +75,9 @@ export function _initControls() {
         const deltaY = Math.abs(event.clientY - pointerDownPos.y);
 
         if (
-          deltaX > this.state.orbitDragThreshold ||
-          deltaY > this.state.orbitDragThreshold
+          !sh.state.editor.drawMode &&
+          (deltaX > this.state.orbitDragThreshold ||
+            deltaY > this.state.orbitDragThreshold)
         ) {
           this.state.hoveredTile = null;
           this.state.seletedTile = null;
@@ -93,6 +95,7 @@ export function _initControls() {
   };
 
   const onPointerUp = () => {
+    this.state.isPointerDown = false;
     setTimeout(() => {
       this.state.isOrbiting = false;
       pointerDownPos = null;

@@ -22,4 +22,3 @@ export function init() {
 
   this.state.initialized = true;
 }
-

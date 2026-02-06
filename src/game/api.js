@@ -69,21 +69,12 @@ export function setTileColor(tileIndex, hexColor) {
     return;
   }
 
-  // Update original color, then reapply current highlight state
+  // Update original color and the actual material color
   tile.mesh.userData.originalColor.setHex(hexColor);
+  tile.mesh.material.color.setHex(hexColor); // Directly set the color
 
-  if (this.state.hoveredTile === tileIndex) {
-    this._highlightTile(tile);
-  } else if (this.state.selectedTile === tileIndex) {
-    const selectColor = tile.mesh.userData.originalColor
-      .clone()
-      .multiplyScalar(1.8);
-    selectColor.offsetHSL(0.1, 0, 0.2);
-    tile.mesh.material.color.copy(selectColor);
-    tile.mesh.material.emissive.setHex(0x664411);
-  } else {
-    this._resetTileHighlight(tile);
-  }
+  // Important for Three.js to detect material changes
+  tile.mesh.material.needsUpdate = true;
 
   console.log(`[sh] Tile ${tileIndex} color: 0x${hexColor.toString(16)}`);
 }

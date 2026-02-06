@@ -8,6 +8,7 @@
   <body>
     <status-bar></status-bar>
     <sh-hud></sh-hud>
+    <editor-tools></editor-tools>
 
     <div id="menu-panel" class="panel hidden">
         <button id="close-menu" class="close-button">X</button>
@@ -21,6 +22,12 @@
         <button id="close-settings" class="close-button">X</button>
         <h2>Settings</h2>
         <div id="settings-container"></div>
+    </div>
+
+    <div id="map-list-panel" class="panel hidden">
+        <button id="close-map-list" class="close-button">X</button>
+        <h2 id="map-list-title">Select Map</h2>
+        <div id="map-list-container" style="display: flex; flex-direction: column; gap: 10px; max-height: 50vh; overflow-y: auto;"></div>
     </div>
 
     <!-- ES Module Shims for import maps -->

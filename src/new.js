@@ -87,7 +87,7 @@ sh.findHexPath = function (startQ, startR, targetQ, targetR, maxDist) {
 sh.assignTileToPlayer = function (
   tileIndex,
   playerId,
-  colorHex = this.state.players[playerId].color,
+  colorHex = this.state.players[playerId]?.color,
 ) {
   for (const index of Array.isArray(tileIndex) ? tileIndex : [tileIndex]) {
     const tile = this.state.tiles[index];
@@ -98,15 +98,43 @@ sh.assignTileToPlayer = function (
       if (player.tiles.has(index)) player.tiles.delete(index);
     }
 
-    // Add to new player
+    // Add to new player. Handle cases where playerData for playerId=undefined is not directly in this.state.players
     const playerData = this.state.players[playerId];
-    if (!playerData) return false;
+    const actualPlayerData = playerData || this.state.players.undefined; // Fallback to __NEUTRAL__ player data if playerId is undefined
 
-    playerData.tiles.add(index);
-    this.setTileColor(index, playerData.color || colorHex);
+    if (!actualPlayerData) return false; // Should not happen if __NEUTRAL__ is defined
+
+    actualPlayerData.tiles.add(index);
     tile.playerId = playerId;
 
-    console.log(`[sh] Tile ${index} → Player ${playerId}`);
+    // *** Handle visual properties based on playerId ***
+    if (playerId == -1) {
+      // __UNUSED__ - almost invisible, but interactive
+      tile.group.visible = true; // MUST be true to be interactive
+      // tile.mesh.material.transparent = false;
+      // tile.mesh.material.opacity = 0.01; // Increased opacity for raycasting and visibility
+      tile.mesh.material.depthWrite = true; // Helps with rendering order
+      tile.label.visible = false; // Still hide label
+      this.setTileColor(index, this.state.players["-1"].color); // Set to UNUSED's defined color
+    } else if (playerId === undefined) {
+      // __NEUTRAL__ - normal grey
+      tile.group.visible = true;
+      // tile.mesh.material.transparent = false; // Changed to true for NEUTRAL
+      // tile.mesh.material.opacity = 1; // Increased opacity for visibility
+      tile.mesh.material.depthWrite = true;
+      tile.label.visible = true;
+      this.setTileColor(index, this.state.players["undefined"].color); // Set to NEUTRAL's defined color
+    } else {
+      // Normal players or BLOCKED
+      tile.group.visible = true;
+      // tile.mesh.material.transparent = false;
+      // tile.mesh.material.opacity = 1.0;
+      tile.mesh.material.depthWrite = true;
+      tile.label.visible = true;
+      this.setTileColor(index, actualPlayerData.color || colorHex);
+    }
+
+    // console.log(`[sh] Tile ${index} → Player ${playerId}`);
   }
   return true;
 };
@@ -479,6 +507,8 @@ sh.nextTurn = function () {
 // Initialize players with preset colors
 sh.initPlayers = function () {
   this.state.players = {
+    "-1": { color: 0x888888, name: "__UNUSED__", tiles: new Set() }, // Light grey for UNUSED
+    undefined: { color: 0x333333, name: "__NEUTRAL__", tiles: new Set() }, // Dark grey for NEUTRAL
     0: { color: 0x333333, name: "__BLOCKED__", tiles: new Set() }, // Blue
     1: { color: 0x1f77b4, name: "Player 1", tiles: new Set() }, // Blue
     2: { color: 0xff7f0e, name: "Player 2", tiles: new Set() }, // Orange
@@ -773,4 +803,133 @@ const test = () => {
   );
 };
 
-setTimeout(test, 1000);
+// setTimeout(test, 1000);
+
+// *** MAP EDITOR FUNCTIONS ***
+
+sh.state.editor = {
+  active: false,
+  drawMode: false,
+  selectedPlayer: 1,
+  brushArmy: 1,
+};
+
+sh.applyBrush = function (tileIndex) {
+  if (!this.state.editor.active) return;
+
+  const tile = this.state.tiles[tileIndex];
+  if (!tile) return;
+
+  // Check if change is needed to avoid redundant updates
+  if (tile.playerId !== this.state.editor.selectedPlayer) {
+    this.assignTileToPlayer(tileIndex, this.state.editor.selectedPlayer);
+  }
+
+  if (tile.playerId !== -1 && tile.army !== this.state.editor.brushArmy) {
+    this.setArmyStrength(tileIndex, this.state.editor.brushArmy);
+  }
+};
+
+sh.enterMapEditor = function () {
+  console.log("[sh] Entering Map Editor...");
+  this.state.editor.active = true;
+  this.state.editor.drawMode = false;
+  this.state.editor.selectedPlayer = -1; // Default brush to UNUSED
+  this.state.editor.brushArmy = 0; // Default army to 0 for UNUSED
+
+  // Reset scene to max editor size
+  this.resetScene(this.config.editorMapSize.q, this.config.editorMapSize.r);
+
+  // Set all to unused
+  this.assignAllTilesToPlayer(-1);
+
+  // Show Editor UI
+  if (this.ui.editorTools) this.ui.editorTools.show();
+  if (this.ui.statusbar) this.ui.statusbar.setMode("editor");
+};
+
+sh.saveMap = function (name) {
+  if (!name) return false;
+
+  const mapData = [];
+  this.state.tiles.forEach((tile) => {
+    // Save only if not unused
+    if (tile.playerId != -1) {
+      mapData.push({
+        q: tile.q,
+        r: tile.r,
+        playerId: tile.playerId,
+        army: tile.army,
+      });
+    }
+  });
+
+  const saveObj = {
+    name: name,
+    date: Date.now(),
+    tiles: mapData,
+  };
+
+  localStorage.setItem(`hexwar_map_${name}`, JSON.stringify(saveObj));
+  console.log(`[sh] Map '${name}' saved with ${mapData.length} tiles.`);
+  return true;
+};
+
+sh.getMapList = function () {
+  const maps = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key.startsWith("hexwar_map_")) {
+      const name = key.replace("hexwar_map_", "");
+      maps.push(name);
+    }
+  }
+  return maps;
+};
+
+sh.deleteMap = function (name) {
+  localStorage.removeItem(`hexwar_map_${name}`);
+};
+
+sh.loadMap = function (name, forEditing = false) {
+  const dataStr = localStorage.getItem(`hexwar_map_${name}`);
+  if (!dataStr) {
+    console.error(`[sh] Map '${name}' not found.`);
+    return;
+  }
+
+  const data = JSON.parse(dataStr);
+  console.log(`[sh] Loading map '${name}'...`);
+
+  if (forEditing) {
+    this.enterMapEditor();
+    // Delay to allow scene reset to finish if it were async (it's sync but good practice)
+  } else {
+    // For play: find bounds
+    let maxQ = 0,
+      maxR = 0;
+    data.tiles.forEach((t) => {
+      maxQ = Math.max(maxQ, Math.abs(t.q));
+      maxR = Math.max(maxR, Math.abs(t.r));
+    });
+    this.resetScene(maxQ, maxR);
+
+    // If playing, maybe set non-defined tiles to BLOCKED or just don't have them?
+    // For now, resetScene creates a grid.
+    // We should probably set all to UNUSED (invisible) first, then fill in the map
+    this.assignAllTilesToPlayer(-1);
+
+    this.state.editor.active = false;
+    if (this.ui.editorTools) this.ui.editorTools.hide();
+    if (this.ui.statusbar) this.ui.statusbar.setMode("game");
+  }
+
+  // Apply tiles
+  data.tiles.forEach((t) => {
+    const index = this.getTileIndex(t.q, t.r);
+    if (index !== undefined) {
+      this.assignTileToPlayer(index, t.playerId);
+      this.setArmyStrength(index, t.army);
+    }
+  });
+};

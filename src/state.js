@@ -55,6 +55,8 @@ export const state = {
     turnNumber: 1,
   },
   players: {
+    "-1": { color: 0x222222, name: "__UNUSED__", tiles: new Set() }, // Blue
+    undefined: { color: 0x444444, name: "__NEUTRAL__", tiles: new Set() }, // Blue
     0: { color: 0x333333, name: "__BLOCKED__", tiles: new Set() }, // Blue
     1: { color: 0x1f77b4, name: "Player 1", tiles: new Set() }, // Blue
     2: { color: 0xff7f0e, name: "Player 2", tiles: new Set() }, // Orange
@@ -89,6 +91,7 @@ export const state = {
     defence: { index: null, army: null },
   },
   attackPreviewTile: null,
+  isPointerDown: false,
   attackPreview: {
     active: false,
     sourceIndex: null,

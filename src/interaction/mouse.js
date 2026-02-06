@@ -49,6 +49,12 @@ export function _updateHover() {
     this.state.hoveredTile = tileIndex;
     document.body.style.cursor = "pointer";
 
+    // *** EDITOR DRAW MODE ***
+    if (this.state.editor && this.state.editor.active && this.state.editor.drawMode && this.state.isPointerDown) {
+        this.applyBrush(tileIndex);
+        return; // Skip other hover effects in draw mode
+    }
+
     if (this.state.movementMode && this.state.selectedTile !== null) {
       this.updateMovementPreview(tileIndex);
 
@@ -160,6 +166,12 @@ export function _selectTile() {
 
   const tileIndex = this.state.hoveredTile;
   const tile = this.state.tiles[tileIndex];
+
+  // *** EDITOR DRAW MODE ***
+  if (this.state.editor && this.state.editor.active && this.state.editor.drawMode) {
+      this.applyBrush(tileIndex);
+      return;
+  }
 
   // in movement mode, for now, only allow neutral or your own selection
   if (
