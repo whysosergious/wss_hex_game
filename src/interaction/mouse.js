@@ -71,7 +71,7 @@ export function _updateHover() {
         targetTile.playerId !== -1
       ) {
         // path to enemy gets computed inside updateMovementPreview
-        if (this.state.movementPreview.length >= 0) {
+        if (this.state.movementPreview.length > 0) {
           const lastReachableIndex =
             this.state.movementPreview[this.state.movementPreview.length - 1] ??
             this.getSelectedTile();

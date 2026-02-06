@@ -60,6 +60,8 @@ sh.findHexPath = function (startQ, startR, targetQ, targetR, maxDist) {
       const nIndex = this.state.tileMap.get(nKey);
 
       if (nIndex !== undefined && !visited.has(nIndex)) {
+        if (nIndex === targetIndex) return [...path, nIndex]; // *** ALLOW TARGET (Attack) ***
+
         const neighborTile = this.state.tiles[nIndex];
 
         // *** FIXED: BLOCK enemies + blocked tiles ***
@@ -213,8 +215,13 @@ sh.updateMovementPreview = function (hoverIndex) {
   const isEnemy =
     targetTile.playerId !== undefined &&
     targetTile.playerId !== this.getActivePlayer();
-  if (!isEnemy) {
-    this.clearMovementPreview();
+
+  // Always clear previous preview to avoid visual artifacts
+  this.clearMovementPreview();
+
+  // *** RESTRICT ATTACK TO NEIGHBORS ***
+  if (isEnemy && this.hexDistance(selectedTile.q, selectedTile.r, targetTile.q, targetTile.r) > 1) {
+      return;
   }
 
   // *** ALWAYS COMPUTE PATH (even to enemies) ***
@@ -223,6 +230,7 @@ sh.updateMovementPreview = function (hoverIndex) {
     selectedTile.r,
     targetTile.q,
     targetTile.r,
+    selectedTile.army // Pass maxDist to limit range
   );
 
   // *** FOR ENEMIES: SHOW PATH TO LAST REACHABLE + ATTACK INDICATOR ***
@@ -259,7 +267,7 @@ sh.updateMovementPreview = function (hoverIndex) {
     });
 
     // *** RED X ON LAST REACHABLE (FINAL ARMY STATE) ***
-    this.state.movementPreview[this.state.movementPreview.length - 1];
+    const lastReachableIndex = this.state.movementPreview[this.state.movementPreview.length - 1];
     this.showAttackX(lastReachableIndex, hoverIndex);
     return;
   }
@@ -571,10 +579,9 @@ sh.updateAttackPreview = function (hoverIndex) {
 
 sh.showAttackX = function (lastReachableIndex, targetIndex) {
   // Set the preview tile tracker
-  this.state.attackPreviewTile = lastReachableIndex;
+  this.state.attackPreviewTile = targetIndex;
 
-  const tile = this.state.tiles[lastReachableIndex];
-  // const tile = this.state.tiles[targetIndex];
+  const tile = this.state.tiles[targetIndex];
   const ctx = tile.ctx;
   const canvas = tile.canvas;
 
@@ -582,7 +589,7 @@ sh.showAttackX = function (lastReachableIndex, targetIndex) {
   if (tile.armyPreview !== undefined) {
     this._setArmyPreview(tile, tile.armyPreview);
   } else {
-    this.setArmyStrength(lastReachableIndex, tile.army);
+    this.setArmyStrength(targetIndex, tile.army);
   }
 
   // *** RED X ON TOP ***
