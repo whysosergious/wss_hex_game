@@ -625,6 +625,7 @@ sh.consumeAction = function () {
     this.endTurn(); // Just ends CURRENT player's turn
   }
   sh.ui.statusbar.update();
+  this.saveGameState(); // Auto-save
   console.log("Action taken");
 };
 
@@ -636,13 +637,14 @@ sh.endTurn = function () {
     this.endRound(); // *** ALL REINFORCEMENTS HERE ***
     this.state.turnState.turnNumber = 1;
     sh.ui.statusbar.update();
-
+    this.saveGameState(); // Auto-save
     return;
   }
 
   // *** NO REINFORCEMENTS - JUST ADVANCE PLAYER ***
   this.nextPlayer();
   sh.ui.statusbar.update();
+  this.saveGameState(); // Auto-save
   console.log("Turn ended", sh.state.turnState);
 };
 
@@ -834,6 +836,7 @@ sh.enterMapEditor = function () {
   console.log("[sh] Entering Map Editor...");
   this.state.editor.active = true;
   this.state.editor.drawMode = false;
+  if (this.state.controls) this.state.controls.enabled = true; // Ensure controls are enabled
   this.state.editor.selectedPlayer = -1; // Default brush to UNUSED
   this.state.editor.brushArmy = 0; // Default army to 0 for UNUSED
 
@@ -858,7 +861,7 @@ sh.saveMap = function (name) {
       mapData.push({
         q: tile.q,
         r: tile.r,
-        playerId: tile.playerId,
+        playerId: (tile.playerId === undefined) ? "undefined" : tile.playerId,
         army: tile.army,
       });
     }
@@ -891,6 +894,83 @@ sh.deleteMap = function (name) {
   localStorage.removeItem(`hexwar_map_${name}`);
 };
 
+sh.saveGameState = function() {
+    if (this.state.editor.active) return; // Don't auto-save in editor mode
+
+    const stateObj = {
+        turnState: {
+            activePlayer: this.state.turnState.activePlayer,
+            actionNumber: this.state.turnState.actionNumber,
+            turnNumber: this.state.turnState.turnNumber,
+            roundNumber: this.state.turnState.roundNumber
+        },
+        tiles: []
+    };
+
+    this.state.tiles.forEach(tile => {
+        if (tile.playerId != -1) {
+             stateObj.tiles.push({
+                q: tile.q,
+                r: tile.r,
+                playerId: (tile.playerId === undefined) ? "undefined" : tile.playerId,
+                army: tile.army
+            });
+        }
+    });
+
+    localStorage.setItem('hexwar_autosave', JSON.stringify(stateObj));
+    console.log("[sh] Game state autosaved");
+};
+
+sh.loadGameState = function() {
+    const dataStr = localStorage.getItem('hexwar_autosave');
+    if (!dataStr) return false;
+
+    console.log("[sh] Found autosave, loading...");
+    const data = JSON.parse(dataStr);
+
+    // Restore Turn State
+    if (data.turnState) {
+        Object.assign(this.state.turnState, data.turnState);
+    }
+
+    // Restore Map
+    let maxQ = 0, maxR = 0;
+    data.tiles.forEach(t => {
+        maxQ = Math.max(maxQ, Math.abs(t.q));
+        maxR = Math.max(maxR, Math.abs(t.r));
+    });
+    this.resetScene(maxQ, maxR);
+    this.assignAllTilesToPlayer(-1);
+    
+    // UI Cleanup
+    this.state.editor.active = false;
+    this.state.editor.drawMode = false;
+    if (this.state.controls) this.state.controls.enabled = true;
+    if (this.ui.editorTools) this.ui.editorTools.hide();
+    if (this.ui.statusbar) this.ui.statusbar.setMode("game");
+
+    // Apply Tiles
+    data.tiles.forEach(t => {
+        const index = this.getTileIndex(t.q, t.r);
+        if (index !== undefined) {
+             const pid = (t.playerId === "undefined") ? undefined : t.playerId;
+             this.assignTileToPlayer(index, pid);
+             this.setArmyStrength(index, t.army);
+        }
+    });
+    
+    // Hide unused
+    this.state.tiles.forEach(tile => {
+          if (tile.playerId === -1) {
+              tile.group.visible = false;
+          }
+    });
+
+    this.ui.statusbar.update();
+    return true;
+};
+
 sh.loadMap = function (name, forEditing = false) {
   const dataStr = localStorage.getItem(`hexwar_map_${name}`);
   if (!dataStr) {
@@ -914,12 +994,12 @@ sh.loadMap = function (name, forEditing = false) {
     });
     this.resetScene(maxQ, maxR);
 
-    // If playing, maybe set non-defined tiles to BLOCKED or just don't have them?
-    // For now, resetScene creates a grid.
-    // We should probably set all to UNUSED (invisible) first, then fill in the map
+    // If playing, set all to UNUSED first
     this.assignAllTilesToPlayer(-1);
 
     this.state.editor.active = false;
+    this.state.editor.drawMode = false; // Reset draw mode
+    if (this.state.controls) this.state.controls.enabled = true; // Ensure controls are enabled
     if (this.ui.editorTools) this.ui.editorTools.hide();
     if (this.ui.statusbar) this.ui.statusbar.setMode("game");
   }
@@ -928,8 +1008,20 @@ sh.loadMap = function (name, forEditing = false) {
   data.tiles.forEach((t) => {
     const index = this.getTileIndex(t.q, t.r);
     if (index !== undefined) {
-      this.assignTileToPlayer(index, t.playerId);
+      const pid = (t.playerId === "undefined") ? undefined : t.playerId;
+      this.assignTileToPlayer(index, pid);
       this.setArmyStrength(index, t.army);
     }
   });
+
+  // Post-load cleanup: If not editing, hide UNUSED tiles
+  if (!forEditing) {
+      this.state.tiles.forEach(tile => {
+          if (tile.playerId === -1) {
+              tile.group.visible = false;
+          }
+      });
+      // Start auto-saving for this new game
+      this.saveGameState();
+  }
 };

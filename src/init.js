@@ -2,6 +2,7 @@
  * @fileoverview
  * This file defines the main initialization function for the `sh` application.
  */
+import Modal from "./ui/modal.js";
 
 /**
  * Initializes the application.
@@ -21,4 +22,10 @@ export function init() {
   this._initDiceRoller(this);
 
   this.state.initialized = true;
+  this.ui.jsonModal = new Modal('json-modal-panel', 'close-json-modal', 'json-display');
+  
+  // Try to load auto-save
+  if (this.loadGameState) {
+      this.loadGameState();
+  }
 }

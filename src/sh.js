@@ -31,6 +31,7 @@ import {
   debug,
 } from "./game/api.js";
 import { _initDiceRoller } from "./dice.js";
+import Modal from "./ui/modal.js";
 
 /**
  * The global application object.
@@ -60,9 +61,13 @@ import { _initDiceRoller } from "./dice.js";
  * @property {Object} debug - Debugging utilities.
  * @property {function(): void} debug.printState - Prints the state of all tiles to the console.
  * @property {function(): void} debug.printTileMap - Prints the tile map to the console.
+ * @property {function(): void} enterMapEditor - Enters map editor mode.
+ * @property {function(): void} exitMapEditor - Exits map editor mode.
  */
 export const sh = {
-  ui: {},
+  ui: {
+    jsonModal: null, // Initialize jsonModal as null
+  },
   config,
   state,
   init,
@@ -87,6 +92,19 @@ export const sh = {
   clearSelection,
   _initDiceRoller,
   debug: debug,
+  
+  // Editor mode functions
+  enterMapEditor: function() {
+    this.state.editor.active = true;
+    this.ui.statusbar.setMode('editor');
+    this.ui.editorTools.show();
+  },
+  
+  exitMapEditor: function() {
+    this.state.editor.active = false;
+    this.ui.statusbar.setMode('game');
+    this.ui.editorTools.hide();
+  }
 };
 
 globalThis.sh = sh;

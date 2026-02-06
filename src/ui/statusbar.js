@@ -149,9 +149,8 @@ class StatusBar extends HTMLElement {
 
         @media (max-width: 768px) {
             :host {
-                width: calc(100% - 20px);
-                left: 10px;
-                transform: none;
+                left: 50%;
+                transform: translateX(-50%);
                 padding: 0 5px !important;
             }
             .players {
@@ -235,7 +234,7 @@ class StatusBar extends HTMLElement {
     });
 
     this.shadowRoot.querySelector("#data-btn").addEventListener("click", () => {
-      // Show raw JSON
+      // Show raw JSON in modal
       const data = [];
       sh.state.tiles.forEach((tile) => {
         // Only include tiles that are not UNUSED
@@ -243,28 +242,14 @@ class StatusBar extends HTMLElement {
           data.push({
             q: tile.q,
             r: tile.r,
-            playerId: tile.playerId,
+            playerId: tile.playerId === undefined ? "undefined" : tile.playerId,
             army: tile.army,
           });
         }
       });
       const json = JSON.stringify(data, null, 2);
 
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard
-          .writeText(json)
-          .then(() => {
-            alert("Map data copied to clipboard!");
-          })
-          .catch((err) => {
-            console.error("Failed to copy map data to clipboard:", err);
-            alert("Failed to copy to clipboard. Check console for data.");
-            console.log(json);
-          });
-      } else {
-        alert("Clipboard API not available. Check console for data.");
-        console.log(json);
-      }
+      sh.ui.jsonModal.show(json);
     });
 
     sh.onTurnChange = () => this.render();
@@ -323,4 +308,3 @@ class StatusBar extends HTMLElement {
 }
 
 customElements.define("status-bar", StatusBar);
-

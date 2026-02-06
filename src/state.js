@@ -26,6 +26,11 @@ import * as THREE from "three";
  * @property {number | null} hoveredTile - The index of the currently hovered tile, or null if no tile is hovered.
  * @property {number | null} selectedTile - The index of the currently selected tile, or null if no tile is selected.
  * @property {Map<string, number>} tileMap - A map from "q_r" string coordinates to tile indices.
+ * @property {Object} [editor] - Editor specific state.
+ * @property {boolean} editor.active - Is the editor currently active.
+ * @property {boolean} editor.drawMode - Is the editor in draw mode (brushing tiles).
+ * @property {(number|undefined)} editor.selectedPlayer - The player ID selected in the editor brush.
+ * @property {number} editor.brushArmy - The army value selected in the editor brush.
  */
 
 /** @type {AppState} */
@@ -42,6 +47,12 @@ export const state = {
   hoveredTile: null,
   selectedTile: null,
   tileMap: new Map(),
+  editor: {
+    active: false,
+    drawMode: false,
+    selectedPlayer: undefined,
+    brushArmy: 0,
+  },
   // UNTYPED
   isOrbiting: false,
   orbitDragThreshold: 5,

@@ -50,9 +50,14 @@ export function _updateHover() {
     document.body.style.cursor = "pointer";
 
     // *** EDITOR DRAW MODE ***
-    if (this.state.editor && this.state.editor.active && this.state.editor.drawMode && this.state.isPointerDown) {
-        this.applyBrush(tileIndex);
-        return; // Skip other hover effects in draw mode
+    if (
+      this.state.editor &&
+      this.state.editor.active &&
+      this.state.editor.drawMode &&
+      this.state.isPointerDown
+    ) {
+      this.applyBrush(tileIndex);
+      return; // Skip other hover effects in draw mode
     }
 
     if (this.state.movementMode && this.state.selectedTile !== null) {
@@ -62,7 +67,8 @@ export function _updateHover() {
       if (
         targetTile.playerId !== undefined &&
         targetTile.playerId !== this.getActivePlayer() &&
-        targetTile.playerId !== 0
+        targetTile.playerId !== 0 &&
+        targetTile.playerId !== -1
       ) {
         // path to enemy gets computed inside updateMovementPreview
         if (this.state.movementPreview.length >= 0) {
@@ -154,23 +160,58 @@ export function _resetTileHighlight(tile) {
 }
 
 /**
+
  * Handles tile selection logic when a tile is clicked.
+
  * Clears previous selections, applies a distinct visual style to the newly selected tile,
+
  * and updates `sh.state.selectedTile`.
+
  *
+
  * @this {import("../../sh.js").sh}
+
  * @returns {void}
+
  */
+
 export function _selectTile() {
   if (this.state.hoveredTile === null) return;
 
   const tileIndex = this.state.hoveredTile;
+
   const tile = this.state.tiles[tileIndex];
 
-  // *** EDITOR DRAW MODE ***
-  if (this.state.editor && this.state.editor.active && this.state.editor.drawMode) {
+  // *** EDITOR ACTIVE ***
+
+  if (this.state.editor && this.state.editor.active) {
+    if (this.state.editor.drawMode) {
+      // If in draw mode, apply the brush
+
       this.applyBrush(tileIndex);
-      return;
+    } else {
+      // If editor is active but not in draw mode, open JSON modal
+
+      const tileDataToDisplay = {
+        index: tileIndex,
+
+        q: tile.q,
+
+        r: tile.r,
+
+        army: tile.army,
+
+        playerId: tile.playerId,
+
+        // Add other relevant tile properties you want to display
+      };
+
+      const jsonString = JSON.stringify(tileDataToDisplay, null, 2);
+
+      // this.ui.jsonModal.show(jsonString);
+    }
+
+    return;
   }
 
   // in movement mode, for now, only allow neutral or your own selection
@@ -221,9 +262,11 @@ export function _selectTile() {
       if (
         targetTile.playerId !== undefined &&
         targetTile.playerId !== this.getActivePlayer() &&
+        targetTile.playerId !== -1 &&
         this.state.movementPreview.length > 0 // Path exists
       ) {
-        const attackingTileIndex = this.state.movementPreview[this.state.movementPreview.length - 1];
+        const attackingTileIndex =
+          this.state.movementPreview[this.state.movementPreview.length - 1];
         console.log(
           `[sh] EXECUTING ATTACK (fallback): ${this.state.selectedTile} → ${attackingTileIndex} → ${this.state.hoveredTile}`,
         );
@@ -236,10 +279,7 @@ export function _selectTile() {
         );
 
         // Then resolve combat from that tile into the enemy tile
-        this.executeAttack(
-          attackingTileIndex,
-          this.state.hoveredTile,
-        );
+        this.executeAttack(attackingTileIndex, this.state.hoveredTile);
 
         this.state.selectedTile = null;
         return;
