@@ -149,29 +149,145 @@ class StatusBar extends HTMLElement {
 
         @media (max-width: 768px) {
             :host {
-                left: 50%;
-                transform: translateX(-50%);
-                padding: 0 5px !important;
+                /* Layout Wrapper: Invisible & Click-through */
+                top: 10px;
+                left: 10px;
+                right: auto;
+                bottom: auto;
+                transform: none;
+                
+                background: transparent !important;
+                border: none !important;
+                box-shadow: none !important;
+                backdrop-filter: none !important;
+                
+                flex-direction: column;
+                align-items: flex-start; /* Do not stretch children */
+                padding: 0 !important;
+                width: fit-content;
+                height: auto;
+                gap: 10px;
+                pointer-events: none; /* Critical: allows clicking map around buttons */
             }
+
+            /* 1. Menu Button: Separate "Island" at top-left */
+            #menu-button {
+                position: relative;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-around;
+                width: 32px;
+                height: 32px;
+                padding: 7px;
+                margin: 0;
+                
+                background: rgba(20, 20, 20, 0.6); /* Visible contrast */
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 3px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                
+                pointer-events: auto; /* Re-enable clicks */
+                cursor: pointer;
+                backdrop-filter: blur(4px);
+            }
+            #menu-button .line {
+                background: #eee;
+                height: 2px;
+                width: 100%;
+            }
+
+            /* 2. Main Status Panel: Players + Actions + End Turn */
+            #game-controls {
+                display: flex;
+                flex-direction: column;
+                align-items: stretch; /* Stretch content within this compact panel */
+                width: 160px; /* Fixed compact width */
+                
+                /* Requested 10% opacity background */
+                background: rgba(0, 0, 0, 0.4); 
+                backdrop-filter: blur(5px);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 3px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                
+                padding: 8px;
+                gap: 6px;
+                margin: 0;
+                pointer-events: auto; /* Re-enable clicks */
+            }
+
+            /* Players List */
             .players {
-                overflow-x: auto;
-                -ms-overflow-style: none;
-                scrollbar-width: none; 
-            }
-            .players::-webkit-scrollbar {
-                display: none;
-            }
-            .player {
-                padding: 0 8px;
-                font-size: 12px;
-            }
-            .turns, .action-btn {
-                padding: 6px 8px;
-                font-size: 12px;
+                flex-direction: column;
+                gap: 3px;
+                overflow: visible;
+                padding: 0;
+                margin-bottom: 2px;
             }
             
+            .player {
+                padding: 3px 6px;
+                height: auto;
+                background: rgba(255, 255, 255, 0.05);
+                border-radius: 3px;
+                border: 1px solid transparent;
+                font-size: 12px;
+                color: #ccc;
+                justify-content: space-between;
+            }
+
+            .player.active {
+                background: rgba(0, 170, 120, 0.25);
+                border-color: rgba(0, 170, 120, 0.4);
+                color: #fff;
+            }
+            
+            .player .color-dot {
+                width: 8px;
+                height: 8px;
+            }
+
+            /* Actions Text */
+            .turns {
+                text-align: center;
+                font-size: 11px;
+                color: #bbb;
+                padding: 2px 0;
+                border: none;
+                background: transparent;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+
+            /* End Turn Button */
+            .action-btn {
+                width: 100%;
+                margin-top: 2px;
+                padding: 10px 0;
+                font-size: 13px;
+                background: rgba(0, 0, 0, 0.5);
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                border-radius: 3px;
+                color: #eee;
+            }
+            .action-btn:active {
+                background: rgba(255, 255, 255, 0.1);
+            }
+            
+            /* Editor Controls Mobile */
+            #editor-controls {
+                flex-direction: column;
+                align-items: stretch;
+                width: 160px;
+                background: rgba(0, 0, 0, 0.6);
+                backdrop-filter: blur(5px);
+                border-radius: 3px;
+                padding: 8px;
+                gap: 6px;
+                pointer-events: auto;
+            }
             #editor-controls input {
-                width: 80px;
+                width: 100%;
             }
         }
       </style>
